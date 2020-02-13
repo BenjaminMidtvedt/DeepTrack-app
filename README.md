@@ -1,4 +1,4 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This project is an unholy agglomeration of react, electron, tensorflow, and zerorpc -- held together by post-it note glue and surface tension.
 
 ## Installation
 
