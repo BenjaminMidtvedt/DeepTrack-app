@@ -17,6 +17,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "rebuild": "electron-rebuild",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "electron": "electron . --allow-file-access-from-files",
