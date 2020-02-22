@@ -1,0 +1,29 @@
+.sidebar {
+    min-width: 250px;
+    width:250px;
+    flex-direction: vertical;
+    text-align: center;
+    padding: 20px;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    scrollbar-track-color: transparent;
+}
+
+::-webkit-scrollbar {
+    background: transparent;
+    width: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #444;
+    height: 30px;
+}
+
+.header {
+    margin-top: 20px;
+    line-height: 30px;
+    text-align: center;
+    border-bottom: 2px solid #bbb;
+    padding-bottom: 10px;
+    margin-bottom: 40px;
+}

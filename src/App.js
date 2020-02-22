@@ -1,38 +1,62 @@
 import React from 'react';
 import logo from './logo.svg';
-import './App.css';
-import Button from "@material-ui/core/Button"
-import Base from "./base/index.js"
+import './App.scss';
+import { Tabs, Tab, Typography } from "@material-ui/core"
+import { Album, FitnessCenter, BarChart } from '@material-ui/icons'
+import Base from "./base"
+import Trainer from "./trainer"
 
+import { MuiThemeProvider, createMuiTheme} from '@material-ui/core';
 
+const theme = createMuiTheme({
+  palette: {
+    type: 'dark',
+  },
+})
 
-
-class App extends React.Component {
-
-  state = {
-    pressed_next: false
-  }
-
-  on_press_next() {
-    this.setState({pressed_next: true})
-  }
-
-  render() {
-    return this.state.pressed_next ? <Base></Base> : (
-      <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <p>
-            A web-app example using React and Electron!
-          </p>
-          
-          <Button variant="contained" color="primary" onClick={this.on_press_next.bind(this)}>
-            Start!
-          </Button>
-        </header>
-      </div>
-    );
-  }
+const iconstyle = {
+  fill: "inherit", 
+  fontSize:"inherit"
 }
 
-export default App;
+
+export default function App() {
+    
+  const [value, setValue] = React.useState(1);
+
+  function a11yProps(index: any) {
+    return {
+      className: index === value ? "tab tab-active" : "tab",
+      style: {
+        fontSize: 35
+      },
+      onClick: () => setValue(index)
+    };
+  }
+
+  return (
+    <MuiThemeProvider theme={theme}>      
+      <div className="root">
+        <div className="tabs">
+          <div {...a11yProps(0)}> <Album style={iconstyle}></Album> </div>
+          <div {...a11yProps(1)}> <FitnessCenter style={iconstyle}></FitnessCenter> </div>
+          <div {...a11yProps(2)}> <BarChart style={iconstyle}></BarChart> </div>
+        </div>
+        <div hidden = {value !== 0}>
+          <Base theme={theme}></Base>
+        </div>
+
+        <div hidden = {value !== 1}>
+          <Trainer theme={theme}></Trainer>
+        </div>
+
+        <div hidden = {value !== 2}>
+          <Typography>Not yet implemented :(</Typography>
+        </div>
+      </div>
+      
+    </MuiThemeProvider>
+      
+  );
+}
+
