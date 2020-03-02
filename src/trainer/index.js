@@ -137,7 +137,7 @@ export default class Trainer extends React.Component {
                 if (error) {
                     alert(error)
                 } else {
-                    this.setState({result: result + "?dummy=" + Math.ceil(Math.random() * 10000)})
+                    this.setState({result: "data:image/bmp;base64, " + result.toString("base64")})
                 }
             })
         }

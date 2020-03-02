@@ -9,6 +9,9 @@ import numpy as np
 import scipy.ndimage.measurements as M
 import deeptrack.optics, deeptrack.scatterers
 import json
+import io
+
+
 
 load_model = keras.models.load_model
 
@@ -105,8 +108,8 @@ class PyAPI(object):
         feature = self.get_feature(feature_config)
         feature.update()
         sample_image = np.squeeze(feature.resolve())
-        self.save_image(sample_image, "./tmp/feature.bmp")
-        return os.path.abspath("./tmp/feature.bmp")
+
+        return self.save_image(sample_image, "./tmp/feature.bmp")
 
     def get_properties(self, property_list):
         properties = {
@@ -139,9 +142,9 @@ class PyAPI(object):
 
         result = self.segment_image(result, segmentation_thr, min_area, max_area)
 
-        self.save_image(result, "./tmp/res.jpg")
+        
 
-        return os.path.abspath("./tmp/res.jpg")
+        return self.save_image(result, "./tmp/res.jpg")
 
     @cached_function
     def predict(self, model, path):
@@ -227,6 +230,7 @@ class PyAPI(object):
         '''
 
         import scipy.misc
+        import base64
 
 
         image -= np.min(image)
@@ -238,9 +242,13 @@ class PyAPI(object):
         
         image = np.array(image).astype(np.uint8)
 
-        scipy.misc.imsave(name, image)
+        tmpfile = io.BytesIO()
+
+        scipy.misc.imsave(tmpfile, image, format='bmp')
+
+        tmpfile.seek(0)
         
-        return name
+        return tmpfile.getvalue()
 
     def crop_to_divisible(self, image, divisor):
         ''' Crops the dimensions of an image
