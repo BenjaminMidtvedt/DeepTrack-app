@@ -6,6 +6,8 @@ import { Album, FitnessCenter, BarChart } from '@material-ui/icons'
 import Base from "./base"
 import Trainer from "./trainer"
 
+import { SnackbarProvider } from 'notistack'
+
 import { MuiThemeProvider, createMuiTheme} from '@material-ui/core';
 
 const theme = createMuiTheme({
@@ -35,27 +37,29 @@ export default function App() {
   }
 
   return (
-    <MuiThemeProvider theme={theme}>      
-      <div className="root">
-        <div className="tabs">
-          <div {...a11yProps(0)}> <Album style={iconstyle}></Album> </div>
-          <div {...a11yProps(1)}> <FitnessCenter style={iconstyle}></FitnessCenter> </div>
-          <div {...a11yProps(2)}> <BarChart style={iconstyle}></BarChart> </div>
-        </div>
-        <div hidden = {value !== 0}>
-          <Base theme={theme}></Base>
-        </div>
+    <SnackbarProvider maxSnack={3}>
+      <MuiThemeProvider theme={theme}>      
+        <div className="root">
+          <div className="tabs">
+            <div {...a11yProps(0)}> <Album style={iconstyle}></Album> </div>
+            <div {...a11yProps(1)}> <FitnessCenter style={iconstyle}></FitnessCenter> </div>
+            <div {...a11yProps(2)}> <BarChart style={iconstyle}></BarChart> </div>
+          </div>
+          <div hidden = {value !== 0}>
+            <Base theme={theme}></Base>
+          </div>
 
-        <div hidden = {value !== 1}>
-          <Trainer theme={theme}></Trainer>
-        </div>
+          <div hidden = {value !== 1}>
+            <Trainer theme={theme}></Trainer>
+          </div>
 
-        <div hidden = {value !== 2}>
-          <Typography>Not yet implemented :(</Typography>
+          <div hidden = {value !== 2}>
+            <Typography>Not yet implemented :(</Typography>
+          </div>
         </div>
-      </div>
-      
-    </MuiThemeProvider>
+        
+      </MuiThemeProvider>
+    </SnackbarProvider>
       
   );
 }

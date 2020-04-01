@@ -19,6 +19,7 @@ class Python {
             }
 
             if ((error && error.name) === "TimeoutExpired") {
+                console.log("timer")
                 return
             }
             return func(error, res)
@@ -48,6 +49,14 @@ class Python {
 
     sampleFeature(config, callback)  {
         this.queue(() => pythonClient.invoke("sample_feature", config, this.callbackWrapper(callback)))
+    }
+
+    getAllFeatures(callback) {
+        pythonClient.invoke("get_available_features", true, callback)
+    }
+
+    getFeatureProperties(featureName, callback) {
+        pythonClient.invoke("get_feature_properties", featureName, callback)
     }
 
 }

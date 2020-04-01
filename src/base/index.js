@@ -72,8 +72,6 @@ class Display extends React.Component {
                         e.preventDefault();
                     }}
                     onDragEnd = {(e) => {e.preventDefault();this.setState({isDragging: false})}}
-                    onDragLeave = {(e) => {e.preventDefault();this.setState({isDragging: false})}}
-                    onDragExit = {(e) => {e.preventDefault();this.setState({isDragging: false})}}
                     onDrop = {(e) => {
                         e.stopPropagation()
                         const files = e.dataTransfer.files
@@ -84,7 +82,13 @@ class Display extends React.Component {
                         this.call_tracker(files[0].path, segmentation_thr, minArea, maxArea)  
                     }}
                     >
-                    {image && !isDragging ? (<img src={image} onLoad={this.onImageLoad.bind(this)} alt=""></img>) : (<Typography variant="h2" style={{color: "#fff",height:"100vh", lineHeight: "100vh"}}>{isDragging ? "Drop the file here!" : "Drag a file to analyze"}</Typography>) }
+                    {
+                        image && !isDragging ? (<img src={image} onLoad={this.onImageLoad.bind(this)} alt=""></img>) : (
+                            <Typography variant="h2" style={{color: "#fff", lineHeight: "100vh"}}>
+                                {isDragging ? "Drop the file here!" : "Drag a file to analyze"}
+                            </Typography>
+                        )
+                    }
                     {result && !isDragging ? <img src={result} alt=""></img> : null}
                 </div>
                 

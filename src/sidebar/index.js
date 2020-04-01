@@ -12,9 +12,9 @@ export default function Sidebar(props) {
 
   return (
     <div className="sidebar" style={{backgroundColor: theme.palette.background.default}}>
-      <div className="header">
+      {(header && header.length > 0) ? <div className="header">
         <Typography variant="h5" color="textPrimary"> {header} </Typography>
-      </div>
+      </div> : null}
       <div className="form">
         {children}
       </div>

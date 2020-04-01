@@ -6,8 +6,10 @@ import tensorflow as tf
 import tensorflow.keras as keras
 import PIL.Image as Image 
 import numpy as np
+import inspect
 import scipy.ndimage.measurements as M
-import deeptrack.optics, deeptrack.scatterers
+import deeptrack
+from deeptrack import features, optics, scatterers, aberrations, augmentations, utils, noises
 import json
 import io
 
@@ -23,6 +25,18 @@ FEATURES = {
     "Sphere": deeptrack.scatterers.Sphere,
 }
 
+EXCEPTIONS = [
+    "Feature",
+    "Branch",
+    "Scatterer",
+    "Aberration",
+    "Optics",
+    "Load"
+]
+
+IGNORED_CLASSES = (
+    augmentations.Augmentation
+)
 
 def cached_function(function):
 
@@ -33,7 +47,7 @@ def cached_function(function):
     }
 
     def caller(self, *args, **kwargs):
-
+        
         if values["kwargs"] is None and values["args"] is None:
             new_value = function(self, *args, **kwargs)
         elif values["kwargs"] == kwargs and values["args"] == args:
@@ -59,6 +73,8 @@ def extract_property(item):
                                     ) * item.get("scale", 1))
     else:
         return key, value * item.get("scale", 1)
+        
+            
 
 class PyAPI(object):
 
@@ -68,49 +84,144 @@ class PyAPI(object):
         return text
 
     @cached_function
+    def get_available_features(self, for_frontend):
+
+        features = {}
+
+        modules = inspect.getmembers(deeptrack, inspect.ismodule)
+        for module_name, module in modules:
+
+            module_dict = {}
+            classes = inspect.getmembers(module, inspect.isclass)
+            
+            for class_name, module_class in classes:
+                if (issubclass(module_class, deeptrack.features.Feature) 
+                    and class_name not in EXCEPTIONS
+                    and not issubclass(module_class, IGNORED_CLASSES)):
+                    
+                    if for_frontend:
+                        module_dict[class_name] = {
+                            "class": "feature",
+                            "key": module_name,
+                            "type": class_name,
+                            "name": class_name
+                        }
+                    else:
+                        module_dict[class_name] = module_class
+            
+            if module_dict:
+                features[module_name] = module_dict
+
+
+        return features
+
+    @cached_function
+    def get_feature_properties(self, feature_name):
+
+        for feature_type, feature_dict in self.get_available_features(False).items():
+            if feature_name in feature_dict:
+                arg_dict = {}
+                for feature_class in feature_dict[feature_name].mro():
+                    argspec = inspect.getfullargspec(feature_class.__init__)
+
+                    arglist = argspec.kwonlyargs or (argspec.args and argspec.args[1:]) or []
+
+                    defaultlist = argspec.kwonlydefaults or argspec.defaults or []
+
+                    for idx in range(len(arglist)):
+                        annotation = False
+
+                        if arglist[idx] in argspec.annotations:
+                            annotation = repr(argspec.annotations[arglist[idx]])
+                        
+                        default = False
+
+                        try:
+                            default = defaultlist[idx - (len(arglist) - len(defaultlist))]
+                        except:
+                            pass
+
+                        if arglist[idx] not in arg_dict:
+                            arg_dict[arglist[idx]] = {"default": "", "annotation": ""}
+
+                        if default:
+                            arg_dict[arglist[idx]]["default"] = repr(default)
+                        if annotation:
+                            arg_dict[arglist[idx]]["annotation"] = annotation
+
+                return arg_dict
+        return []
+        
+
+    @cached_function
     def load_model(self, path):
         return load_model(path, compile=False)
 
     @cached_function
-    def get_feature(self, feature_config): 
-        config = json.loads(feature_config)
+    def get_features(self, config): 
+        if config["items"]:
 
-        image_size = config["image_size"]
+            features = [self.get_feature(feature) for feature in config["items"]]
+            featureSet = sum(features) 
+            return featureSet
+        else:
+            return None
 
-        optics_selection = config["optics"][0]
-        optics_properties = self.get_properties(optics_selection["properties"])
-        optics = FEATURES[optics_selection["type"]](
-            magnification=1,
-            output_region=(0, 0, *image_size),
-            resolution=optics_properties["pixel_size"],
-            NA=optics_properties["na"],
-            **optics_properties 
-        )  
-
-        particle = config["sample"][0]
-        particle_properties = self.get_properties(particle["properties"])
+    def get_feature(self, feature):
+        feature_class = self.get_available_features(False)[feature["key"]][feature["type"]]
         
-        sample =  FEATURES[particle["type"]](
+        properties = {}
+
+        for prop in feature["items"]:
+            if prop["class"] == "property":
+                if prop["items"] and "value" in prop["items"][0] and prop["items"][0]["value"]:
+                    properties[prop["name"]] = prop["items"][0]["value"]
+        
+        all_keys = properties.keys()
+
+        for key, value in properties.items():
+            
+            s_prepend = "lambda  "
+
+            correlated_properties = []
+            for other_key in all_keys:
+                if value.find(other_key) != -1:
+                    s_prepend += other_key + ", "
+            s_prepend = s_prepend[:-2] + ": "
+
+            properties[key] = eval(s_prepend + value)
+
+
+        for prop in feature["items"]:
+            if prop["class"] == "featureGroup":
+                feature_property = self.get_features(prop)
+                if feature_property:
+                    properties[prop["name"]] = feature_property
+
+        return feature_class(**properties)
+
+        
+    @cached_function
+    def get_sample(self, particle_config):
+        
+        particle_properties = self.get_properties(particle_config["properties"])
+        
+        sample =  FEATURES[particle_config["type"]](
                             **particle_properties,
                             position=lambda: np.random.rand(2) * image_size,
                             position_unit="pixel"
-                        ) ** self.get_number_of_particles(particle["properties"]) 
-        
-        feature = optics(sample)
-
-        
-
-        return feature
+                        ) ** self.get_number_of_particles(particle_config["properties"]) 
 
 
     
     def sample_feature(self, feature_config):
-        feature = self.get_feature(feature_config)
+        feature = self.get_features(feature_config)
         feature.update()
         sample_image = np.squeeze(feature.resolve())
 
         return self.save_image(sample_image, "./tmp/feature.bmp")
 
+    @cached_function
     def get_properties(self, property_list):
         properties = {
 
@@ -120,7 +231,6 @@ class PyAPI(object):
             key, property = extract_property(item)
             properties[key] = property
 
-            
         return properties
 
 
@@ -135,15 +245,9 @@ class PyAPI(object):
 
 
     def track_image(self, path, segmentation_thr, min_area, max_area):
-
         tracker = self.load_model(DEFAULT_MODEL)
-
         result = self.predict(tracker, path)
-
         result = self.segment_image(result, segmentation_thr, min_area, max_area)
-
-        
-
         return self.save_image(result, "./tmp/res.jpg")
 
     @cached_function
@@ -239,7 +343,6 @@ class PyAPI(object):
             immax = 1
         image  = image / immax  * 255
 
-        
         image = np.array(image).astype(np.uint8)
 
         tmpfile = io.BytesIO()

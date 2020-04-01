@@ -8,7 +8,7 @@ from deeptrack.image import Image
 
 
 
-class Generator(keras.utils.Sequence):
+class Generator:
     '''
     Base class for a generator.
     '''
@@ -51,8 +51,6 @@ class Generator(keras.utils.Sequence):
                 batch.append(image)
                 if label_function:
                     labels.append(label_function(image))
-
-
 
             if shuffle_batch:
                 self.shuffle(batch, labels)
