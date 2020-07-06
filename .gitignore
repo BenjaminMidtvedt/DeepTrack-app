@@ -12,6 +12,8 @@
 
 # production
 /build
+/logs
+/deeptrack-app-*
 
 # misc
 .DS_Store

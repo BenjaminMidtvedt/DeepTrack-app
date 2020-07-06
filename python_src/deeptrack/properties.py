@@ -99,8 +99,8 @@ class Property:
             Returns itself.
 
         '''
-        
-        if self.has_updated_since_last_resolve:
+
+        if self.has_updated_since_last_resolve and hasattr(self, "_current_value"):
             return self
 
         self.has_updated_since_last_resolve = True
@@ -176,7 +176,6 @@ class Property:
         elif callable(sampling_rule):
             # If it's a function, extract the arguments it accepts.
             function_input = {}
-
             # Get the kwarg arguments the function accepts
             for key in get_kwarg_names(sampling_rule):
                 # If that name is among passed kwarg arguments

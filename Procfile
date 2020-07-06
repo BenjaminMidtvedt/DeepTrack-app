@@ -1,2 +1,2 @@
 react: npm start
-electron: node src/serve-electron.js
+electron: node electron/serve-electron.js

@@ -115,48 +115,6 @@ class Base extends React.Component {
         const { segmentation_thr, areaRange } = this.state
         return (
             <div className="base container horizontal">
-                
-                <Sidebar theme={theme} header="DeepTrack predictor">
-
-                    <Typography id="threshold-slider" gutterBottom style={{textAlign: "left"}}> Segmentation Threshold </Typography>
-                    <Slider 
-                            aria-labelledby="threshold-slider"
-                            defaultValue={0.95} 
-                            valueLabelDisplay="auto"
-                            onChange={(ev, newvalue) => {
-                                if (this.display && this.display.imageArea < ACTIVE_RELOAD_MAX_IMAGE_AREA) {
-                                    this.setState({segmentation_thr: newvalue})
-                                }
-                            }}
-                            onChangeCommitted = {(ev, newvalue) => {
-                                this.setState({segmentation_thr: newvalue})
-                            }} 
-                            marks={[{value:0, label:"0"}, {value:1, label:"1"}]}
-                            step={0.001}
-                            min={0}
-                            max={1}></Slider>
-
-                    <Typography id="area-slider" gutterBottom style={{textAlign: "left"}}> Accepted Area </Typography>
-                    <Slider 
-                            aria-labelledby="threshold-slider"
-                            defaultValue={[0, 5]}
-                            scale={(x) => Math.round(Math.pow(10, x))}
-                            valueLabelDisplay="auto"
-                            onChange={(ev, newvalue) => {
-                                if (this.display && this.display.imageArea < ACTIVE_RELOAD_MAX_IMAGE_AREA) {
-                                    this.setState({areaRange: newvalue})
-                                }
-                            }}
-                            onChangeCommitted = {(ev, newvalue) => {
-                                this.setState({areaRange: newvalue})
-                            }} 
-                            marks={[{value:0, label:"1e0"}, {value:1, label:"1e1"}, {value:2, label:"1e2"}, {value:3, label:"1e3"}, {value:4, label:"1e4"}, {value:5, label:"1e5"}]}
-                            step={0.001}
-                            min={0}
-                            max={5}></Slider>
-                    
-                </Sidebar>
-
                 <Display 
                     ref={(ref) => {this.display = ref}}
                     segmentation_thr={segmentation_thr}

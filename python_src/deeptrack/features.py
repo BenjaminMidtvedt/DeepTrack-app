@@ -74,7 +74,7 @@ class Feature(ABC):
         the input list. It can be `MERGE_STRATEGY_OVERRIDE` (0, default),
         where the input is replaced by the new list, or
         `MERGE_STRATEGY_APPEND` (1), where the new list is appended to the
-         end of the input list.
+        end of the input list.
     __distributed__ : bool
         Controls whether `.get(image, **kwargs)` is called on each element
         in the list separately (`__distributed__ = True`), or if it is
@@ -90,7 +90,7 @@ class Feature(ABC):
 
 
     def __init__(self, *args: dict, **kwargs):
-        
+        super(Feature, self).__init__()
         properties = getattr(self, "properties", {})
 
         # Create an iterable of kwargs and args
@@ -117,7 +117,7 @@ class Feature(ABC):
         Abstract method that define how the feature transforms the input. The current
         value of all properties will be passed as keyword arguments.
 
-        Arguments
+        Parameters
         ---------
         image : Image or List[Image]
             The Image or list of images to transform
@@ -172,10 +172,15 @@ class Feature(ABC):
         # or to rescale properties.
         feature_input = self._process_properties(feature_input)
 
+        
+        # Set the seed from the hash_key. Ensures equal results
+        np.random.seed(feature_input["hash_key"][0])
+
         # _process_and_get calls the get function correctly according
         # to the __distributed__ attribute
         new_list = self._process_and_get(image_list, **feature_input)
- 
+
+        
         # Add feature_input to the image the class attribute __property_memorability__
         # is not larger than the passed property_verbosity keyword
         property_verbosity = global_kwargs.get("property_memorability", 1)
@@ -199,6 +204,7 @@ class Feature(ABC):
 
     def update(self, **kwargs) -> "Feature":
         '''Updates the state of all properties.
+
         Parameters
         ----------
         **kwargs
@@ -322,9 +328,28 @@ class Feature(ABC):
 
 
     def sample(self, **kwargs) -> "Feature":
-        # Sampling a feature should have no affect
+        '''Returns the feature'''
         
         return self
+
+    def __getattr__(self, key):
+        # Allows easier access to properties, while guaranteeing they are updated correctly.
+        # Should only every be used from the inside of a property function. 
+        # Is not compatible with sequential properties.
+        try: 
+            return super().__getattr__(key)
+        except AttributeError:
+            try:
+                properties = self.__dict__["properties"]
+                if key in properties:
+                    properties.update()
+                    return properties[key].current_value
+                else:
+                    raise AttributeError
+
+            except KeyError:
+                raise AttributeError
+        
 
 
     def __add__(self, other: "Feature") -> "Feature":
@@ -355,6 +380,7 @@ class Feature(ABC):
         # Duplicate the feature to resolve more items
         
         return Duplicate(self, other)
+
 
 
 
@@ -450,12 +476,175 @@ class Duplicate(StructuralFeature):
     def get(self, image, features: List[Feature], **kwargs):
         ''' Resolves each feature in `features` sequentially
         '''
-        for feature in features:
-            image = feature.resolve(image, **kwargs)
+        for index in range(len(features)):
+            image = features[index].resolve(image, **kwargs)
+
         return image
 
     def update(self, **kwargs):
         super().update(**kwargs)
 
-        for feature in self.properties["features"].current_value:
-            feature.update(**kwargs)
+        features = self.properties["features"].current_value
+        for index in range(len(features)):
+            features[index].update(**kwargs)
+
+
+
+class ConditionalSetProperty(StructuralFeature):
+    ''' Conditionally overrides the properties of child features
+    
+    Parameters
+    ----------
+    feature : Feature
+        The child feature
+    condition : str
+        The name of the conditional property
+    **kwargs
+        Properties to be used if `condition` is True
+
+    '''
+    __distributed__ = False
+    def __init__(self, feature: Feature, condition="is_label", **kwargs):
+        super().__init__(feature=feature, condition=condition, **kwargs)
+    
+
+    def get(self, image, feature, condition, **kwargs):
+        if kwargs.get(condition, False):
+            return feature.resolve(image, **kwargs)
+        else:
+            for property_key in self.properties.keys():
+                kwargs.pop(property_key, None)
+            
+            return feature.resolve(image, **kwargs)
+
+
+
+class ConditionalSetFeature(StructuralFeature):
+    ''' Conditionally resolves one of two features
+    
+    Parameters
+    ----------
+    on_false : Feature
+        Feature to resolve if the conditional property is false
+    on_true : Feature
+        Feature to resolve if the conditional property is true
+    condition : str
+        The name of the conditional property
+
+    '''
+    __distributed__ = False
+    def __init__(self, on_false: Feature = None, on_true: Feature = None,  condition="is_label", **kwargs):
+        super().__init__(on_false=on_false, on_true=on_true, condition=condition, **kwargs)
+    
+
+    def get(self, image, *, on_false, on_true, condition, **kwargs):
+        if kwargs.get(condition, False):
+            if on_true:
+                return on_true.resolve(image, **kwargs)
+            else:
+                return image
+        else:
+            if on_false:
+                return on_false.resolve(image, **kwargs)
+            else:
+                return image
+
+
+
+class Lambda(Feature):
+    ''' Calls a custom functions.
+
+    Note that the property `function` needs to be wrapped in an
+    outer layer function. The outer layer function can depend on
+    other properties, while the inner layer function accepts an
+    image as input.
+
+    Parameters
+    ----------
+    function : Callable[Image or list of Image]
+        Function that takes the current image as first input 
+    '''
+
+    def __init__(self, function, **kwargs):
+        super().__init__(function=function, **kwargs)
+    
+
+    def get(self, image, function, **kwargs):
+        return function(image)
+
+
+
+class Label(Feature):
+    '''Outputs the properties of this features.
+
+    Can be used to extract properties in a feature set and combine them into 
+    a numpy array. 
+
+    Parameters
+    ----------
+    output_shape : tuple of ints
+        Reshapes the output to this shape
+    
+    '''
+
+    __distributed__ = False
+
+
+    def __init__(self, output_shape=None, **kwargs):
+        super().__init__(output_shape=output_shape)
+
+    
+    def get(self, image, output_shape=None, hash_key=None, **kwargs):
+        result = []
+        for key, value in kwargs.items():
+            result.append(value)
+
+        if output_shape:
+            result = np.reshape(np.array(result), output_shape)
+
+        return np.array(result)
+
+
+class LoadImage(Feature):
+    '''Loads an image from disk.
+
+    Cycles through file-readers numpy, pillow and opencv2 to open the 
+    image file.
+
+    Parameters
+    ----------
+    path : str
+        Path to image to load
+    load_options : dict
+        Options passed to the file reader
+
+    Raises
+    ------
+    IOError
+        If no file reader could parse the file or the file doesn't exist.
+
+    '''
+
+    __distributed__ = False
+
+
+    def __init__(self, path, load_options={}, **kwargs):
+        super().__init__(path=path, load_options=load_options, **kwargs)
+
+
+    def get(self, *ign, path, load_options, **kwargs):
+        try:
+            return np.load(path, **load_options)
+        except (IOError, ValueError):
+            import PIL.Image
+            try:
+                return np.array(PIL.Image.open(path, **load_options))
+            except IOError:
+                import cv2
+                
+                image = np.array(cv2.imread(path, **load_options))
+                if image:
+                    return image
+
+                raise IOError("No filereader available for file {0}".format(path))
+

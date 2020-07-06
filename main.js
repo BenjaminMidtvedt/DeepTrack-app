@@ -19,11 +19,11 @@ function createWindow () {
 
   // and load the index.html of the app.
   const startUrl = process.env.ELECTRON_START_URL || url.format({
-    pathname: path.join(__dirname, '/../build/index.html'),
+    pathname: path.join(__dirname, '/build/index.html'),
     protocol: 'file:',
     slashes: true
   });
-
+  
   mainWindow.loadURL(startUrl);
   
 
@@ -32,19 +32,23 @@ function createWindow () {
 }
 
 let pyProc = null
+let pyProc2 = null
 
 const createPyProc = () => {
-  console.log("Starting python....")
-  let script = "./python_src/server.py"
+  const path = require("path")
+  let script = path.resolve("./python_src/server.py")
+  let script2 = path.resolve("./resources/app/python_src/server.py")
+  console.log("Starting python from ", script)
+  
   let port = '' + 2734
 
   if (false) {
     pyProc = require('child_process').execFile(script, [port])
   } else {
     pyProc = require('child_process').spawn('py', [script])
+    pyProc2 = require('child_process').spawn('py', [script2])
   }
   if (pyProc != null) {
-    //console.log(pyProc)
     console.log('child process success on port ' + port)
   } else {
     console.log("Something is wrong")
@@ -53,7 +57,9 @@ const createPyProc = () => {
 
 const exitPyProc = () => {
   pyProc.kill()
+  pyProc2.kill()
   pyProc = null
+  pyProc2 = null
 }
 
 

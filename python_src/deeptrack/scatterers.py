@@ -165,7 +165,9 @@ class PointParticle(Scatterer):
     '''
 
     def __init__(self, **kwargs):
-        super().__init__(upsample_axes=(), **kwargs)
+        kwargs.pop("upsample", None)
+        kwargs.pop("upsample_axes", None)
+        super().__init__(upsample=1, upsample_axes=(), **kwargs)
 
 
     def get(self, image, **kwargs):

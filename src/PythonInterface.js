@@ -33,8 +33,7 @@ class Python {
         } else {
             this.nextJob = () => {} 
             func()
-        }
-        
+        }    
     }
 
     
@@ -57,6 +56,22 @@ class Python {
 
     getFeatureProperties(featureName, callback) {
         pythonClient.invoke("get_feature_properties", featureName, callback)
+    }
+
+    enqueueTraining(config, callback) {
+        pythonClient.invoke("enqueue_training", config, callback)
+    }
+
+    getQueue(config, callback) {
+        this.queue(() => pythonClient.invoke("get_queue", this.callbackWrapper(callback)))
+    }
+
+    popQueue(key, callback) {
+        this.queue(() => pythonClient.invoke("pop_queue", key, this.callbackWrapper(callback)))
+    }
+
+    getAvailableFunctions(callback) {
+        pythonClient.invoke("getAvailableFunctions", callback)
     }
 
 }
