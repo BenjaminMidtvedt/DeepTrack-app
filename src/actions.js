@@ -8,6 +8,7 @@ export const DELETE_ITEM = "DELETE_ITEM"
 export const SAVE_ITEM = "SAVE_ITEM"
 export const LOAD_ITEMS = "LOAD_ITEMS"
 export const CLEAR_STORE = "CLEAR_STORE"
+export const INJECT_ITEMS = "INJECT_ITEMS"
 
 export function addItem(target, item) {
     return {type: ADD_ITEM, target, item}
@@ -51,4 +52,8 @@ export function loadItems(index, items) {
 
 export function clearStore() {
     return {type: CLEAR_STORE}
+}
+
+export function injectItems(items, target, child, position) {
+    return {type: INJECT_ITEMS, items, target, child, position}
 }

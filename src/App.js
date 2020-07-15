@@ -25,6 +25,8 @@ import MailIcon from '@material-ui/icons/Mail';
 
 import { Provider } from "react-redux"
 
+
+
 import Base from "./base"
 import Trainer from "./trainer"
 import Models from "./models"
@@ -36,9 +38,26 @@ import Sidebar from './sidebar';
 import FeatureSet from './trainer/Features/Feature'
 import FeatureStore from './featurestore'
 import { ClearAll, Clear, Restore, DeleteOutline, SaveOutlined, FolderOpen } from '@material-ui/icons';
+
+
+const fs = window.require('fs')
+const { dialog } = window.require('electron').remote
+
 const theme = createMuiTheme({
   palette: {
     type: 'dark',
+    primary:{
+      main: "#0090E7",
+      dark: "#0090E7"
+    },
+    success: {
+      main: "#00D25B",
+      dark: "#00D25B"
+    },
+    secondary: {
+      main: "#FC424A",
+      dark: "#FC424A"
+    }
   },
 })
 
@@ -168,6 +187,52 @@ export default function App() {
       onClick: () => setValue(index)
     };
   }
+
+  function save() {
+    const present = store.getState().undoable.present 
+    dialog.showSaveDialog({
+      defaultPath:"MyModel",
+      filters:[
+        {name: 'DeepTrack Set (.dts)', extensions:['dts']}
+      ]
+    }).then(({filePath}) => {
+        if (filePath) {
+          fs.writeFileSync(filePath, JSON.stringify(present))
+        }
+        
+    })
+  }
+  
+
+  function load() {
+    dialog.showOpenDialog({
+      properties:[
+        "openFile",
+      ],
+      filters:[
+        {name: 'DeepTrack Set (.dts)', extensions:['dts']},
+        {name: 'All Files', extensions: ['*']}
+      ]
+    }).then(({filePaths}) => {
+      if (filePaths && filePaths.length > 0) {
+        const present = fs.readFileSync(filePaths[0])
+        if (present) {
+          try {
+            store.dispatch({type: "SET_STATE", present: JSON.parse(present)})
+          } catch (error) {
+            
+          }
+        }
+      }
+    })
+  }
+
+  document.onkeydown = function(e) {
+    if (e.ctrlKey && e.key === 'z') {
+      e.preventDefault();
+    }
+  }
+
   return (
     <Provider store={store}>
       <SnackbarProvider maxSnack={3}>
@@ -213,7 +278,7 @@ export default function App() {
                         <MenuIcon />
                       </IconButton>
                     <Typography style={{lineHeight:"49px", textAlign:"left", textIndent: 20}} variant="h4">
-                        Deeptrack 2.0
+                        DeepTrack 2.0
                     </Typography>
                     <IconButton
                         color="inherit"
@@ -226,8 +291,8 @@ export default function App() {
                       </IconButton>
                       <IconButton
                         color="inherit"
-                        aria-label="open drawer"
-                        onClick={reset}
+                        aria-label=""
+                        onClick={save}
                         edge="end"
                         className={clsx(classes.menuButton)}
                       >
@@ -235,8 +300,8 @@ export default function App() {
                       </IconButton>
                       <IconButton
                         color="inherit"
-                        aria-label="open drawer"
-                        onClick={reset}
+                        aria-label=""
+                        onClick={load}
                         edge="end"
                         className={clsx(classes.menuButton)}
                       >
@@ -256,8 +321,6 @@ export default function App() {
                     </AntTab>
                     <AntTab label="Predict" color="s">
                     </AntTab>
-                    <AntTab label="Tensorboard" color="s">
-                    </AntTab>
                   </AntTabs>
                 </div>
 
@@ -271,10 +334,6 @@ export default function App() {
 
                 <div style={{ width: "100%" }} hidden={value !== 2}>
                   <Base theme={theme}></Base>
-                </div>
-
-                <div style={{ width: "100%" }} hidden={value !== 3}>
-                  <iframe title="tensorboard" style={{ width: "100%", filter: "invert(95%)" }} src="http://localhost:6006/#scalars&regexInput=asd"></iframe>
                 </div>
               </div>
             </div>

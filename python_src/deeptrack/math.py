@@ -57,4 +57,5 @@ class NormalizeMinMax(Feature):
     def get(self, image, min, max, **kwargs):
         image = image / (np.max(image) - np.min(image)) * (max - min)
         image = image - np.min(image) + min 
+        image[np.isnan(image)] = 0
         return image

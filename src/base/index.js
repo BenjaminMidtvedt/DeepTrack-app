@@ -2,11 +2,30 @@ import React from 'react';
 import './index.css';
 import Sidebar from "../sidebar"
 
-import { Slider, Typography } from "@material-ui/core"
+import { Slider, Typography, Fab } from "@material-ui/core"
 
 import python from "../PythonInterface"
+import {ResultDisplay} from "../models/index"
+import store from '../store';
+import { GetApp } from '@material-ui/icons';
 
-const ACTIVE_RELOAD_MAX_IMAGE_AREA = 50000 * 50000
+const { dialog } = window.require('electron').remote
+const fs = window.require('fs')
+
+const result_style = {
+    width: "calc(100% - 40px)", 
+    display:"flex", 
+    flexDirection:"row",
+    padding: 20,
+    margin: 20,
+    maxHeight: 500,
+    borderRadius:5,
+    backgroundColor: "#181B23",
+    justifyContent: "center",
+    justifyItems: "center",
+    alignContent: "center",
+    alignItems: "center"
+}
 
 class Display extends React.Component {
 
@@ -14,6 +33,7 @@ class Display extends React.Component {
         isDragging: false,
         image: undefined,
         result: undefined,
+        results: []
         
     }
 
@@ -37,18 +57,19 @@ class Display extends React.Component {
     }  
     
 
-    call_tracker(image, segmentation_thr, minArea, maxArea) {
-        console.log(minArea, maxArea, segmentation_thr, image)
-        if (image) {
-            python.track_image(image, segmentation_thr, minArea, maxArea, (error, result) => { 
-                if (error) {
-                    alert(error)
-                } else {
-                    
-                    this.setState({result: "data:image/bmp;base64, " + result.toString('base64')})
-                }  
-            })
-        }
+    call_tracker(files) {
+        files = Array.from(files)
+        this.setState({results: files.map((f) => ({input: f.path, result:""}))})
+        
+
+        files.forEach((file, idx) => python.predict(file.path, store.getState().undoable.present.items, (err, res) => {
+            if (res) {
+                const arr = this.state.results
+                arr[idx].result = res
+                this.setState({results: arr})
+            }
+            
+        }))
     }
 
     onImageLoad({target:img}) {
@@ -57,14 +78,32 @@ class Display extends React.Component {
         this.imageArea = this.imageHeight * this.imageWidth
     }
 
+    downloadImages(num) {
+        dialog.showOpenDialog({properties:["openDirectory"]}).then((res) => {
+            if (res.filePaths && res.filePaths.length === 1) {
+                const dir = res.filePaths[0] + "/"
+                this.state.results.forEach((item) => {
+                    let fn = item.input.split("/")
+                    fn = fn[fn.length-1].split("\\")
+                    fn = fn[fn.length-1].split(".")[0]
+                    const path = dir + fn + "_prediction"
+                    if (Array.isArray(item.result)) {
+                        fs.writeFileSync(path + ".json", JSON.stringify(item.result), () => {})
+                    } else {
+                        fs.writeFileSync(path + ".bmp", item.result, "base64", () => {})
+                    }
+                })
+            }
+        })
+    }
+
     render() {
-        const {isDragging, image, result} = this.state
-        const {segmentation_thr, minArea, maxArea} = this.props
+        const {isDragging, results} = this.state
         
         return (
             <div className="main container">           
                 <div
-                    style={{backgroundColor: isDragging ? "#222" : "#171717"}}
+                    style={{backgroundColor: isDragging ? "#222" : "#000", width: "100%", height:"100%"}}
                     id="drag-file" 
                     onDragOver = {(e)=>{
                         this.setState({isDragging: true})
@@ -77,19 +116,40 @@ class Display extends React.Component {
                         const files = e.dataTransfer.files
 
                         if (files.length === 0) return 
-
-                        this.setState({image: files[0].path, isDragging: false})
-                        this.call_tracker(files[0].path, segmentation_thr, minArea, maxArea)  
+                        this.call_tracker(files)  
+                        this.setState({isDragging: false})
                     }}
                     >
                     {
-                        image && !isDragging ? (<img src={image} onLoad={this.onImageLoad.bind(this)} alt=""></img>) : (
+                        results && !isDragging ? (
+                            <>
+                            <Fab onClick={this.downloadImages.bind(this)} size="large" color="primary" aria-label="add" style={{position:"absolute", bottom:50, right:50}}>
+                                <GetApp />
+                            </Fab>
+                            {results.map((entry, idx) => (
+                                <div key={entry.input + idx} style={result_style}>
+                                    <Typography variant="h4">{"#"+idx}</Typography>
+                                    <div style={{width:"100%", height:450, padding: 5}}>
+                                        <Typography variant="h4">{"Input"}</Typography>
+                                        <img style={{objectFit:"contain", width:"100%", height:"90%"}} src={entry.input} alt=""></img> 
+                                    </div>
+                                    <ResultDisplay title="Prediction" height={450} width={"100%"} src={entry.result} alt=""></ResultDisplay>
+                                </div>
+                            ))
+                            }       
+                            <div style={{height:200}}/>
+                            </>
+                            ) : (
                             <Typography variant="h2" style={{color: "#fff", lineHeight: "100vh"}}>
-                                {isDragging ? "Drop the file here!" : "Drag a file to analyze"}
+                                {isDragging ? "Drop the file(s) here!" : "Drag file(s) to analyze"}
                             </Typography>
                         )
                     }
-                    {result && !isDragging ? <img src={result} alt=""></img> : null}
+                    {results && !isDragging ? 
+                        <>
+                             
+                        </> :
+                    null}
                 </div>
                 
 
@@ -103,23 +163,15 @@ class Base extends React.Component {
 
     state = {
         image: undefined,
-        segmentation_thr: 0.95,
-        areaRange:[0, 5],
         result: undefined
     }
 
     display = undefined
 
     render() {
-        const { theme } = this.props
-        const { segmentation_thr, areaRange } = this.state
         return (
             <div className="base container horizontal">
-                <Display 
-                    ref={(ref) => {this.display = ref}}
-                    segmentation_thr={segmentation_thr}
-                    minArea={Math.pow(10, areaRange[0])}
-                    maxArea={Math.pow(10, areaRange[1])}></Display>
+                <Display></Display>
             </div>
         );
     }

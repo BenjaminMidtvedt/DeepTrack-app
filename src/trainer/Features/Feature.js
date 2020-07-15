@@ -5,7 +5,7 @@ import {  useSnackbar } from 'notistack';
 import { connect } from 'react-redux'
 import {UNDO, REDO, GROUPBEGIN, GROUPEND} from "easy-redux-undo"
 
-import { toggleExpand, addItem, setName, setValue, removeItem, dropItem } from "../../actions"
+import { toggleExpand, addItem, setName, setValue, removeItem, dropItem, injectItems } from "../../actions"
 
 import AutoComplete from '../AutoComplete/index.js';
 
@@ -21,6 +21,7 @@ const path = window.require("path")
 let available_functions = {}
 
 Python.getAvailableFunctions((err, res) => {
+    console.log(err, res)
     if (res) {
         available_functions = res
     }
@@ -81,7 +82,7 @@ function getTriggersFromTree(tree, blacklist) {
                 feature.items.forEach((i) => {
                     const sub = tree[i]
                     if (sub.class === "featureGroup") return getTriggersFromFeature(i)
-                    if (blacklist.includes(sub.index)) {
+                    if (!blacklist.includes(sub.index)) {
                         const newItem = {...sub}
                         newItem.key = newItem.name
                         branch[newItem.name] = {"_suggestionData": newItem}
@@ -96,7 +97,7 @@ function getTriggersFromTree(tree, blacklist) {
     }
 
     tree[0].items.forEach((i) => {tree[i].items.forEach(j => getTriggersFromFeature(j))})
-
+    console.log(formatedTree)
     return formatedTree
 } 
 
@@ -151,6 +152,7 @@ function AutoCompleteInput(props) {
 
     const [tree, setTree] = React.useState({})
 
+    console.log(props.parent, "input")
     return (
         <AutoComplete
             getInfoBox={getInfoBox}
@@ -220,6 +222,8 @@ class Property extends React.Component {
         const { item, onDelete, parent } = this.props
         const parentType = store.getState().undoable.present.items[parent].key
 
+        console.log(item.index, "property")
+
         return (
             <div className="property">
                 <Tooltip enterDelay={200} title={(item.descriptions && item.descriptions[item.name] && item.descriptions[item.name].length) ? item.descriptions[item.name][1] : ""}>
@@ -288,7 +292,23 @@ function SaveModal(props) {
     function handleClose(shouldSave) {
         if (shouldSave) {
             const filepath = SAVES_FOLDER + props.item.name + (props.extension || ".dtf")
-            fs.writeFile(filepath, JSON.stringify(props.item),
+            
+            let list = []
+            const snapshot = store.getState().undoable.present.items
+            function recurseItem(item) {
+                if (item) {
+                    list.push(item)
+                    if (item.items) {
+                        item.items.forEach((index) => {
+                            recurseItem(snapshot[index])
+                        })
+                    }
+                }
+            }
+
+            recurseItem(props.item)
+
+            fs.writeFile(filepath, JSON.stringify(list),
                 (err) => {
                     if (err) {
                         enqueueSnackbar("Could not save file", { variant: "error" })
@@ -406,6 +426,8 @@ export class Feature extends React.Component {
     render() {
         const { item, onDelete } = this.props
         const { nameError, openSave } = this.state
+        
+        console.log(item.index, "feature")
 
         return (
             <div className={"block feature "}
@@ -694,19 +716,25 @@ export class FeatureGroup extends React.Component {
     render() {
         const { item, onDelete } = this.props
         const { dialogOpen } = this.state
+        console.log(item.index, "group")
         return (
             <div className={"featureGroup"}
                 ref={this._ref}
                 onDrop={(e) => {
                     e.preventDefault()
-
                     e.stopPropagation()
-                    const newitem = JSON.parse(e.dataTransfer.getData("item"))
+
+                    let nitem = e.dataTransfer.getData("item")
+                    let nitems = e.dataTransfer.getData("items")
                     
                     const feature = e.feature;
                     const position = e.position;
-                    actions.GROUPBEGIN()
-                    actions.dropItem(newitem, item.index, feature, position)
+                    if (nitem) {
+                        actions.GROUPBEGIN()
+                        actions.dropItem(JSON.parse(nitem), item.index, feature, position)
+                    } else if (nitems) {
+                        actions.injectItems(JSON.parse(nitems), item.index, feature, position)
+                    }
                     
                     this.draggingOver = false
 
@@ -754,9 +782,11 @@ export class FeatureGroup extends React.Component {
 }
 
 function SidebarItem(props) {
+    
 
     const {item, headerStyle, itemStyle} = props;
     const {name, items, expand, index, load} = item
+    console.log(index, "sidebar")
     return (
         <div className="sidebar-item-wrapper">
             <div className="sidebar-item-header" 
@@ -769,18 +799,6 @@ function SidebarItem(props) {
                 </div>
                 <div className="sidebar-item-text">
                     {name.toUpperCase()}
-                </div>
-                <div className="header-right">
-                    <IconButton style={{height:24, width:24, padding:0, marginLeft:6}} onClick={(e) => {
-                        e.stopPropagation()
-                    }}>
-                        <FolderOpen style={{height: 24}}></FolderOpen>
-                    </IconButton>
-                    <IconButton style={{height:24, width:24, padding:0, marginLeft:6}} onClick={(e) => {
-                        e.stopPropagation()
-                    }}>
-                        <SaveOutlined style={{height: 24}}></SaveOutlined>
-                    </IconButton>
                 </div>
                 
             </div>
@@ -814,6 +832,10 @@ class FeatureSet extends React.Component {
                 }
             }
         })
+    }
+
+    shouldComponentUpdate() {
+        return false
     }
 
     default_item = () => {
@@ -883,6 +905,8 @@ class FeatureSet extends React.Component {
     form = React.createRef()
 
     render() {
+        console.log(store.getState())
+        console.log("root render")
         const { items } = this.props.item 
 
         function handleSave() {
@@ -905,7 +929,6 @@ class FeatureSet extends React.Component {
                 ref = {ref => this._ref = ref}
                 key={this.state.baseKey}
                 className="featureSet"
-                style={{height:"100%"}}
                 onFocus={(e) => {
                     e.target.oldValue = e.target.value
                 }}
@@ -921,11 +944,8 @@ class FeatureSet extends React.Component {
                 }}>
                 
                 {(items || []).map((item) => (
-                    <SidebarItem key={item} index={item}>
-                        
-                    </SidebarItem>
+                    <SidebarItem key={item} index={item}></SidebarItem>
                 ))}
-                
                 
                 <SaveModal
                     open={this.state.openSave}
@@ -933,6 +953,7 @@ class FeatureSet extends React.Component {
                     item={this.item}
                     extension={this.props.isModel ? ".dtm" : ".dts"}
                 ></SaveModal>
+                
                 <FeaturePicker ignoreFeatures extension={this.props.isModel ? ".dtm" : ".dts"} open={this.state.openPicker}
                     onClose={(item) => {
                         if (item) {
@@ -979,7 +1000,8 @@ const actions = {
     REDO: () => store.dispatch(REDO()),
     UNDO: () => store.dispatch(UNDO()),
     GROUPBEGIN: () => store.dispatch(GROUPBEGIN()),
-    GROUPEND: () => store.dispatch(GROUPEND())
+    GROUPEND: () => store.dispatch(GROUPEND()),
+    injectItems: (index, target, items, position) => store.dispatch(injectItems(index, target, items, position))
 }
 
 const mapDispatchToProps = dispatch => (actions)
@@ -994,7 +1016,8 @@ function deepEqual(x, y) {
   }
 
 const options = {
-    areMergedPropsEqual: deepEqual
+    pure: true,
+    areStatePropsEqual: (x, y) => {return deepEqual(x, y)},
 }
 
 Feature = connect(mapStateToProps, mapDispatchToProps, null, options)(Feature)
@@ -1028,6 +1051,7 @@ function SaveProgress(props) {
 
 function to_list(items, parent) {
     const storeItems = store.getState().undoable.present.items;
+    console.log(items, parent, storeItems)
     return items.map((itemindex, idx) => {
         const item = storeItems[itemindex]
         if (!item) return null

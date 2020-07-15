@@ -4,10 +4,14 @@ import { items } from './reducers.js'
 import { addItem, clearStore, CLEAR_STORE } from "./actions"
 
 const fs = window.require('fs')
+const path = window.require('path')
 
+const {remote} = window.require('electron')
+export const appPath = remote.app.getAppPath()
+
+const CACHE =  path.join(appPath, "/tmp/cache/")
 
 let next_job = undefined
-const CACHE = "./tmp/cache/"
 
 const itemReducer = combineReducers({
     items
@@ -41,10 +45,18 @@ function load() {
                fs.statSync(CACHE + b).mtime.getTime();
     });
     if (files.length > 0) {
-        const target = files[0]
-        const job = fs.readFileSync(CACHE + target)
-        return JSON.parse(job)
-    }
+        try {
+            const target = files[1]
+            const job = fs.readFileSync(CACHE + target)
+            return JSON.parse(job)
+        } catch {}
+
+        try {
+            const target = files[0]
+            const job = fs.readFileSync(CACHE + target)
+            return JSON.parse(job)
+        } catch {}
+    } 
     return undefined
 }
 
@@ -53,6 +65,7 @@ export function reset() {
     store.dispatch(clearStore())
     store.dispatch(addItem(0, {name:"Dataset", load:".dts", class: "root", grabbable: false}))
     store.dispatch(addItem(0, {name:"Model", load:".dtm", class: "root", grabbable: false}))
+    store.dispatch(addItem(1, {name:"Config", class: "featureGroup", grabbable: false}))
     store.dispatch(addItem(1, {name:"Image", class: "featureGroup", grabbable: false}))
     store.dispatch(addItem(1, {name:"Label", class: "featureGroup", grabbable: false}))
     store.dispatch(addItem(2, {name:"Preprocess", class: "featureGroup", grabbable: false}))
@@ -63,7 +76,7 @@ export function reset() {
 
 const initial_state = load();
 
-const store = createStore(app, initial_state, applyMiddleware(...[logger, cache]))
+const store = createStore(app, initial_state, applyMiddleware(...[cache]))
 
 const root = {
     name: "Root",
@@ -72,7 +85,7 @@ const root = {
 }
 
 
-if (!initial_state || initial_state.undoable.present.items.length < 7) {
+if (!initial_state || initial_state.undoable.present.items.length < 8) {
     reset()
     store.dispatch(CLEAR())
 }
@@ -106,8 +119,8 @@ async function save(job) {
         target = files[0]
     }
     
-    fs.writeFileSync(CACHE + target, JSON.stringify(job))
+    fs.writeFile(CACHE + target, JSON.stringify(job), () => next_job = undefined)
 
-    next_job = undefined
+    
 }
 

@@ -36,17 +36,18 @@ let pyProc2 = null
 
 const createPyProc = () => {
   const path = require("path")
-  let script = path.resolve("./python_src/server.py")
-  let script2 = path.resolve("./resources/app/python_src/server.py")
-  console.log("Starting python from ", script)
+  let script = path.join(__dirname, "/python_src/server.py")
+  let root = path.resolve(__dirname)
+  console.log("Starting python from ", script, root)
   
   let port = '' + 2734
 
   if (false) {
     pyProc = require('child_process').execFile(script, [port])
   } else {
-    pyProc = require('child_process').spawn('py', [script])
-    pyProc2 = require('child_process').spawn('py', [script2])
+    pyProc = require('child_process').spawn('py', ['-u', script], {cwd: root})
+    pyProc.stdout.on("data", (d) => console.log(d.toString()))
+    pyProc.stderr.on("data", (d) => console.error(d.toString()))
   }
   if (pyProc != null) {
     console.log('child process success on port ' + port)
@@ -57,9 +58,7 @@ const createPyProc = () => {
 
 const exitPyProc = () => {
   pyProc.kill()
-  pyProc2.kill()
   pyProc = null
-  pyProc2 = null
 }
 
 

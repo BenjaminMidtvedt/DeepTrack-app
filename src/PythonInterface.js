@@ -73,6 +73,23 @@ class Python {
     getAvailableFunctions(callback) {
         pythonClient.invoke("getAvailableFunctions", callback)
     }
+    
+    pauseQueue(callback) {
+        pythonClient.invoke("pause_queue", callback)
+    }
+
+    unpauseQueue(callback) {
+        pythonClient.invoke("unpause_queue", callback)
+    }
+
+    predict(files, config, arg, callback) {
+        if (callback) {
+            pythonClient.invoke("predict", files, config, arg, callback)
+        } else {
+            pythonClient.invoke("predict", files, config, arg)
+        }
+        
+    }
 
 }
 

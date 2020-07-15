@@ -83,10 +83,12 @@ class Scatterer(Feature):
 
     def _process_properties(self, properties: dict) -> dict:
         # Rescales the position property
-
+        
         if "position" in properties:
             if properties["position_unit"] == "meter":
-                properties["position"] = np.array(properties["position"]) / np.array(properties["voxel_size"])[:len(properties["position"])]
+                properties["position"] = np.array(properties["position"]) / np.array(properties["voxel_size"])[:len(properties["position"])] / properties.get("upscale", 1)
+                properties["z"] = np.array(properties["z"]) / np.array(properties["voxel_size"])[:len(properties["position"])] / properties.get("upscale", 1)
+
         return properties
 
 
@@ -165,8 +167,6 @@ class PointParticle(Scatterer):
     '''
 
     def __init__(self, **kwargs):
-        kwargs.pop("upsample", None)
-        kwargs.pop("upsample_axes", None)
         super().__init__(upsample=1, upsample_axes=(), **kwargs)
 
 
@@ -284,6 +284,7 @@ class Sphere(Scatterer):
             voxel_size,
             **kwargs):
 
+        
         # Create a grid to calculate on
         rad = radius / voxel_size
         rad_ceil = np.ceil(rad)
@@ -293,6 +294,7 @@ class Sphere(Scatterer):
         X, Y, Z = np.meshgrid((x / rad[0])**2, (y / rad[1])**2, (z / rad[2])**2)
 
         mask = (X + Y + Z <= 1) * 1.0
+
         return mask
 
 
@@ -382,6 +384,7 @@ class Ellipsoid(Scatterer):
             **kwargs):
 
         radius_in_pixels = radius / voxel_size
+        
         max_rad = np.max(radius) / voxel_size
         rad_ceil = np.ceil(max_rad)
 
@@ -399,4 +402,5 @@ class Ellipsoid(Scatterer):
         ZR = (-sin[1] * X) + cos[1] * sin[2] * Y + cos[1] * cos[2] * Z 
 
         mask = ((XR / radius_in_pixels[0])**2 + (YR / radius_in_pixels[1])**2 + (ZR / radius_in_pixels[2])**2 < 1) * 1.0
+        
         return mask

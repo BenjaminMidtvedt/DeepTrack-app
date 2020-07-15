@@ -2,10 +2,11 @@ import React from 'react';
 import { Tabs, Tab, Typography, List, ListItem, Collapse, IconButton, Divider } from "@material-ui/core"
 import { Album, FitnessCenter, BarChart, ArrowDownward, ArrowDropDown, ExpandMore, ExpandLess } from '@material-ui/icons'
 import Python from "../PythonInterface"
+import { appPath } from '../store';
 
 const fs = window.require('fs')
 const path = window.require("path")
-let SAVES_FOLDER = path.resolve("./saves/") + "\\"
+let SAVES_FOLDER = path.join(appPath, "/saves/") + "\\"
 
 
 const EXTENSIONS = {
@@ -92,7 +93,12 @@ function FeatureListItem(props) {
         <div className="grabbable"
             draggable
             onDragStart={(e) => {
-                e.dataTransfer.setData("item", JSON.stringify(item))
+                if (Array.isArray(item)) {
+                    e.dataTransfer.setData("items", JSON.stringify(item))
+                } else {
+                    e.dataTransfer.setData("item", JSON.stringify(item))
+                }
+                
             }}
             style={{height: 22, border: "1px solid rgba(255, 255, 255, 0.1)"}}>
             <Typography noWrap style={{fontFamily: "hack", overflow:"hidden", userSelect: "none"}}>{name}</Typography>

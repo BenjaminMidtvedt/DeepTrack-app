@@ -318,6 +318,7 @@ class MyReactTextareaAutocomplete extends React.Component<TextareaProps, Textare
   _onSelect = (item: Object | string) => {
     const { value } = this.props
     const { textToReplace } = this.state;
+    if (value[textToReplace[0]] === " ") textToReplace[0]++
   
     const newValue = value.slice(0, textToReplace[0]) + item[0] + value.slice(textToReplace[1], value.length)
     // set the new textarea value and after that set the caret back to its position

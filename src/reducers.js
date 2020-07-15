@@ -6,7 +6,8 @@ import {
     SET_NAME,
     SET_VALUE,
     TOGGLE_EXPAND,
-    CLEAR_STORE
+    CLEAR_STORE,
+    INJECT_ITEMS
 } from './actions.js'
 
 const defaultItem = {
@@ -144,6 +145,32 @@ function toggleExpand(items, action) {
     )
 }
 
+function injectItems(items, action) {
+    const indexMap = {}
+
+    action.items.forEach((item, index) => {
+        indexMap[item.index] = items.length + index 
+    })
+
+    const newItems = action.items.map((item, index) => {
+        if (!item) return null
+        item = {...item}
+        
+        if (item.items) {
+            item.items = item.items.map((ind) => indexMap[ind])
+        }
+        return item
+    })
+
+    items = dropItem(items, {index: newItems[0], ...action})
+
+    newItems.slice(1).forEach((item) => {
+        items.push(item)
+    })
+    console.log(items)
+    return items
+}
+
 function loadItems(items, action) {
     items = deleteItem(items, action)
 
@@ -155,6 +182,7 @@ function loadItems(items, action) {
     action.items.forEach((item, index) => {
         if (!item) return
         item = {...item}
+        
         if (item.items) {
             item.items = item.items.map((ind) => indexMap[ind])
         }
@@ -196,8 +224,12 @@ export function items(state = initialItems, action) {
             return loadItems(state, action)
         case TOGGLE_EXPAND:
             return toggleExpand(state, action)
+        case INJECT_ITEMS:
+            return injectItems(state, action)
         case CLEAR_STORE:
             return initialItems
+        case "SET_STATE":
+            return action.present.items
         default:
             return state
     }

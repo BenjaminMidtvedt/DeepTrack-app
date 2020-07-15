@@ -1,9 +1,10 @@
 import sys
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-
+sys.path.append(os.path.abspath("."))
+sys.path.append(os.path.abspath("./python_src/"))
 import tensorflow as tf
-import tensorflow.keras as keras
+import keras as keras
 import PIL
 import PIL.Image as Image 
 import numpy as np
@@ -13,11 +14,15 @@ import threading
 import datetime
 import time
 import deeptrack
+import custom_features
 import skimage
-from deeptrack import features, optics, scatterers, aberrations, augmentations, utils, noises, models, losses, math
 import json
 import io
 import re
+import glob
+from deeptrack import *
+model_cache = glob.glob(os.path.abspath("./tmp/models/*.h5"))
+[os.remove(f) for f in model_cache if os.path.isfile(f)]
 
 
 load_model = keras.models.load_model
@@ -37,14 +42,15 @@ EXCEPTIONS = [
     "Aberration",
     "Optics",
     "Load",
+    "StructuralFeature"
 ]
 
 IGNORED_CLASSES = (
 )
 
-class ResolveWithProperties(features.StructuralFeature):
-    def get(self, *ign, feature, **kwargs):
-        return feature.resolve(**kwargs)
+IGNORED_MODULES = (
+    "sequences"
+)
     
 
 def cached_function(function):
@@ -84,106 +90,9 @@ def extract_property(item):
         return key, value * item.get("scale", 1)
 
 
-class Generator():
-    '''Base class for a generator.
-
-    Generators continously update and resolve features, and allow other
-    frameworks to continuously access new features.
-    '''
-
-    def generate(self,
-                 feature,
-                 label_function=None,
-                 data_function=None,
-                 batch_size=1,
-                 shuffle_batch=True,
-                 ndim=4):
-        ''' Create generator instance.
-        
-        Parameters
-        ----------
-        feature : Feature
-            The feature to resolve images from.
-        label_function : Callable[Image] -> array_like
-            Function that returns the label corresponding to an image.
-        batch_size : int
-            Number of images per batch.
-        shuffle_batch : bool
-            If True, the batches are shuffled before outputting.
-        ndim : int
-            Expected number of dimensions of the output.
-        '''
-
-        get_one = self._get_from_map(feature)
-        while True:
-            with threading.Lock():
-                batch = []
-                labels = []
-                # Yield batch_size results
-                for _ in range(batch_size):
-                    image = next(get_one)
-                    if data_function:
-                        batch.append(data_function(image))
-                    else:
-                        batch.append(image)
-                    if label_function:
-                        labels.append(label_function(image))
-
-                if shuffle_batch:
-                    self._shuffle(batch, labels)
-
-                batch = np.array(batch)
-                labels = np.array(labels)
-
-                # Console found batch_size with results
-                if batch.ndim > ndim:
-                    dims_to_remove = batch.ndim - ndim
-                    batch = np.reshape(batch, (-1, *batch.shape[dims_to_remove + 1:]))
-                    labels = np.reshape(labels, (-1, *labels.shape[dims_to_remove + 1:]))
-                elif batch.ndim < ndim:
-                    Warning("Incorrect number of dimensions. Found {0} with {1} dimensions, expected {2}.".format(batch.shape, batch.ndim, ndim))
-
-                if label_function:
-                    yield batch, labels
-                else:
-                    yield batch
-
-
-    def _get(self, features):
-        # Updates and resolves a feature or list of features.
-        if isinstance(features, list):
-            for feature in features:
-                feature.update()
-
-            output = []
-            for index, feature in enumerate(features):
-
-                image = feature.resolve(is_label=index==1)
-                
-                output.append(image)
-            return output
-        else:
-            features.update()
-            return features.resolve()
-
-
-    def _shuffle(self, x, y):
-        # Shuffles the batch and labels equally along the first dimension
-        import random
-        start_state = random.getstate()
-        random.shuffle(x)
-        random.setstate(start_state)
-        random.shuffle(y)
-
-
-    def _get_from_map(self, features):
-        # Continuously yield the output of _get
-        while True:
-            yield self._get(features)
-
 import scipy
 import tensorflow
-import tensorflow.keras.backend as K
+import keras.backend as K
 import itertools
         
 AVAILABLE_PACKAGES = [
@@ -194,7 +103,19 @@ AVAILABLE_PACKAGES = [
     tensorflow,
     K,
     deeptrack
-]      
+]
+
+AVAILABLE_PACKAGES_NAMES = [
+    "np",
+    "skimage",
+    "PIL",
+    "scipy",
+    "tensorflow",
+    "K",
+    "deeptrack"
+]
+
+PACKAGE_DICT = dict([(name, package) for name, package in zip(AVAILABLE_PACKAGES_NAMES, AVAILABLE_PACKAGES)])
 
 class PyAPI(object):
 
@@ -205,9 +126,11 @@ class PyAPI(object):
         self.training_thread = threading.Thread(target=self.train_queued_models, daemon=True)
         self.training_thread.start()
         self.lock = threading.Lock
+        self.generator = None
 
     @cached_function
     def getAvailableFunctions(self, *args, **kwargs):
+        print("called")
         tree = {
             "np":{"_suggestionData": {"class": "module"}},
             "skimage":{"_suggestionData": {"class": "module"}},
@@ -264,14 +187,10 @@ class PyAPI(object):
         
 
     def train_queued_models(self):
-        G = Generator()
         while True:
-
             try:
                 while not self.queuedModels or self.paused:
                     time.sleep(1)
-                
-                
             
                 next_model = None
                 for model in self.queuedModels:
@@ -297,10 +216,12 @@ class PyAPI(object):
                         break
 
                 all_features = {}
-                
-                feature = self.get_features(feature_config[feature_config[entrypoint]["items"][0]], items=feature_config, all_features=all_features)
 
-                label_feature = self.get_features(feature_config[feature_config[entrypoint]["items"][1]], items=feature_config, all_features=all_features)
+                aux = self.get_features(feature_config[feature_config[entrypoint]["items"][0]], items=feature_config, all_features=all_features)
+
+                feature = aux + self.get_features(feature_config[feature_config[entrypoint]["items"][1]], items=feature_config, all_features=all_features)
+
+                label_feature = self.get_features(feature_config[feature_config[entrypoint]["items"][2]], items=feature_config, all_features=all_features)
 
                 if label_feature:
                     label_feature = feature + label_feature
@@ -312,26 +233,36 @@ class PyAPI(object):
                     if "name" in item and item["name"] == "Model":
                         entrypoint = item["index"]
                         break
+
                 preprocess = self.get_features(feature_config[feature_config[entrypoint]["items"][0]], feature_config, all_features)
+
                 model = self.get_features(feature_config[feature_config[entrypoint]["items"][1]], feature_config, all_features)
+
                 postprocess = self.get_features(feature_config[feature_config[entrypoint]["items"][2]], feature_config, all_features)
 
-                generator = G.generate([feature, label_feature], 
-                                       label_function=lambda image: image[1], 
-                                       data_function=lambda image: image[0], 
-                                       batch_size=int(next_model["batch_size"]))
+                if preprocess:
+                    feature += preprocess
                 
-
+                generator = generators.ContinuousGenerator([feature, label_feature], 
+                                       label_function=lambda image: image[1], 
+                                       batch_function=lambda image: image[0],
+                                       feature_kwargs=[{}, {"is_label": True}], 
+                                       batch_size=int(next_model["batch_size"]),
+                                       min_data_size=int(next_model["min_data_size"]),
+                                       max_data_size=int(next_model["max_data_size"]))
+                
                 
                 next_model["status"] = "Generating validation set"
 
-                validation_set = [
-                    (
-                        feature.update(_update_key=index).resolve(),
-                        label_feature.resolve(is_label=True)
-                    )
-                    for index in range(64)
-                ]
+                validation_set = []
+
+                for _ in range(64):
+                    label_feature.update()
+                    validation_set.append((
+                        feature.resolve(is_validation=True), 
+                        label_feature.resolve(is_label=True, is_validation=True)
+                    ))
+                    next_model["validation_size"] = len(validation_set)
 
                 validation_data, validation_labels = zip(*validation_set)
 
@@ -342,8 +273,8 @@ class PyAPI(object):
                         if label.ndim < 3:
                             label_out = []
                             prediction_out = []
-                            for idx, label in enumerate(label):
-                                label_out.append({"name":"", "value": repr(label)})
+                            for idx, lab in enumerate(label):
+                                label_out.append({"name":"", "value": repr(lab)})
                         else:
                             label_out = self.save_image(label, "")
                         list_of_labels.append(label_out)
@@ -352,40 +283,69 @@ class PyAPI(object):
                 next_model["inputs"] = list_of_inputs
                 next_model["targets"] = list_of_labels
                 next_model["properties"] = [[dict([(key, repr(value)) for key, value in prop_dict.items()]) for prop_dict in image.properties] for image in validation_data]
+                min_val = np.inf
+                
 
-                while next_model in self.queuedModels and next_model["completed_epochs"] < next_model["epochs"]:
-                    while self.paused:
-                        next_model["status"] = "Paused"
-                        time.sleep(0.1)
+                for _ in range(int(next_model["min_data_size"])):
+                    label_feature.update()
+                    generator.data.append((
+                        feature.resolve(), 
+                        label_feature.resolve(is_label=True)
+                    ))
+                    next_model["data_size"] = len(generator.data)
 
-                    next_model["status"] = "Training"
+                with generator:
+                    while next_model in self.queuedModels and next_model["completed_epochs"] < next_model["epochs"]:
+                        while self.paused:
+                            next_model["status"] = "Paused"
+                            time.sleep(0.1)
 
-                    h = model.fit(generator, epochs=int(next_model["completed_epochs"])+1, 
-                              initial_epoch=int(next_model["completed_epochs"]), 
-                              steps_per_epoch=int(next_model["validation_freq"]),
-                              validation_data=(np.array(validation_data), np.array(validation_labels)),
-                              use_multiprocessing=False, 
-                              workers=0,
-                              callbacks= [tb])
+                        next_model["status"] = "Training"
+                        next_model["data_size"] = len(generator.data)
+                        h = model.fit(generator, epochs=int(next_model["validation_freq"]),
+                                validation_data=(np.array(validation_data), np.array(validation_labels)),
+                                use_multiprocessing=False, 
+                                workers=0)
+                        next_model["data_size"] = len(generator.data)
 
-                    next_model["completed_epochs"] += 1
-                    next_model["loss"].append(dict([(key, item[0]) for key, item in h.history.items()]))
+                        while self.paused:
+                            next_model["status"] = "Paused"
+                            time.sleep(0.1)
 
-                    next_model["status"] = "Evaluating"
-                    predictions = model.predict(np.array(validation_data[:16]))
+                        if h.history["val_loss"][-1] < min_val:
+                            model.save("./tmp/models/" + next_model["id"] + ".h5")
+                            min_val = h.history["val_loss"][-1]
 
-                    evaluations = [model.evaluate(np.array([image]), np.array([label])) for image, label in zip(validation_data, validation_labels)]
-                    next_model["validations"].append(evaluations)
-                    list_of_preds = []
-                    for prediction in predictions:
-                        if prediction.ndim < 3:
-                            prediction_out = []
-                            for idx, label in enumerate(prediction):
-                                prediction_out.append({"name":"", "value": repr(prediction)})
-                        else:
-                            prediction_out = self.save_image(prediction, "")
-                        list_of_preds.append(prediction_out)
-                    next_model["predictions"].append(list_of_preds)
+                        next_model["completed_epochs"] += 1
+                        next_model["loss"] += [(dict([(key, item[idx]) for key, item in h.history.items()])) for idx in range(int(next_model["validation_freq"]))]
+
+                        next_model["status"] = "Evaluating"
+                        predictions = model.predict(np.array(validation_data[:16]))
+
+                        def tolist(a):
+                            try:
+                                b = a[0]
+                                return a
+                            except:
+                                return [a]
+
+                        evaluations = [
+                            dict([(key, value) for key, value in zip(
+                                model.metrics_names,
+                                tolist(model.evaluate(np.array([image]), np.array([label]), verbose=0)))
+                            ]) for image, label in zip(validation_data, validation_labels)]
+
+                        next_model["validations"].append(evaluations)
+                        list_of_preds = []
+                        for prediction in predictions:
+                            if prediction.ndim < 3:
+                                prediction_out = []
+                                for idx, label in enumerate(prediction):
+                                    prediction_out.append({"name":"", "value": repr(label)})
+                            else:
+                                prediction_out = self.save_image(prediction, "")
+                            list_of_preds.append(prediction_out)
+                        next_model["predictions"].append(list_of_preds)
 
                 next_model["status"] = "Done"
                     
@@ -396,7 +356,40 @@ class PyAPI(object):
                     pass
 
 
+    def predict(self, file, feature_config, model_id=None):
+        all_features = {}
+        entrypoint = None
+        # Grab model
+        for item in feature_config:
+            if "name" in item and item["name"] == "Model":
+                entrypoint = item["index"]
+                break
 
+
+        preprocess = self.get_features(feature_config[feature_config[entrypoint]["items"][0]], feature_config, all_features)
+
+        if model_id is None:
+            model = self.get_features(feature_config[feature_config[entrypoint]["items"][1]], feature_config, all_features)
+        else:
+            model = keras.models.load_model(os.path.abspath("./tmp/models/" + model_id + ".h5"), compile=False)
+
+        postprocess = self.get_features(feature_config[feature_config[entrypoint]["items"][2]], feature_config, all_features)
+
+        image = deeptrack.features.LoadImage(path=file).resolve()
+        
+        if preprocess:
+            image = preprocess.update().resolve(image)
+
+        prediction = model.predict_on_batch(np.array([image]))
+
+        if prediction.ndim < 3:
+            prediction_out = []
+            for idx, label in enumerate(prediction):
+                prediction_out.append({"name":"", "value": repr(label)})
+        else:
+            prediction_out = self.save_image(prediction, "")
+            
+        return prediction_out
 
     @cached_function
     def echo(self, text):
@@ -408,24 +401,30 @@ class PyAPI(object):
 
         features = {}
 
-        modules = inspect.getmembers(deeptrack, inspect.ismodule)
+        modules = inspect.getmembers(deeptrack, inspect.ismodule) + inspect.getmembers(custom_features, inspect.ismodule)
         for module_name, module in modules:
 
             module_dict = {}
-            classes = inspect.getmembers(module, inspect.isclass)
-            
+            classes = inspect.getmembers(module, lambda x: inspect.isclass(x) or inspect.isfunction(x))
+            if module_name in IGNORED_MODULES:
+                continue
             for class_name, module_class in classes:
-                if (issubclass(module_class, deeptrack.features.Feature) 
-                    and class_name not in EXCEPTIONS
-                    and not issubclass(module_class, IGNORED_CLASSES)):
-                    
+                if (issubclass(module_class, deeptrack.features.Feature) or (
+                    module_name == "models" and class_name[0].isupper())) \
+                    and class_name not in EXCEPTIONS \
+                    and not issubclass(module_class, IGNORED_CLASSES):
+
+                    if module_class.__doc__: 
+                        description = module_class.__doc__[:module_class.__doc__.find("Parameters")]
+                    else: 
+                        description = ""
                     if for_frontend:
                         module_dict[class_name] = {
                             "class": "feature",
                             "key": module_name,
                             "type": class_name,
                             "name": class_name,
-                            "description": module_class.__doc__[:module_class.__doc__.find("Parameters")]
+                            "description": description
                         }
                     else:
                         module_dict[class_name] = module_class
@@ -442,14 +441,30 @@ class PyAPI(object):
         for feature_type, feature_dict in self.get_available_features(False).items():
             if feature_name in feature_dict:
                 arg_dict = {}
-                for feature_class in feature_dict[feature_name].mro():
+                iterator = None
+                if issubclass(feature_dict[feature_name], deeptrack.features.Feature):
+                    iterator = feature_dict[feature_name].mro()
+                else:
+                    iterator = [feature_dict[feature_name], deeptrack.models._compile]
+                    
 
-                    argspec = inspect.getfullargspec(feature_class.__init__)
+                for feature_class in iterator:
+                    if issubclass(feature_class, deeptrack.features.Feature):
+                        argspec = inspect.getfullargspec(feature_class.__init__)
+                    elif callable(feature_class):
+                        argspec = inspect.getfullargspec(feature_class)
 
-                    arglist = argspec.kwonlyargs or (argspec.args and argspec.args[1:]) or []
+                    arglist = argspec.kwonlyargs or argspec.args or []
+
+                    if arglist and arglist[0] == "self":
+                        arglist = arglist[1:]
 
                     defaultlist = argspec.kwonlydefaults or argspec.defaults or []
 
+                    try:
+                        defaultlist = list(defaultlist.values())
+                    except:
+                        pass
                     for idx in range(len(arglist)):
                         annotation = False
 
@@ -467,7 +482,6 @@ class PyAPI(object):
                         
                         regex = r"^( *)(?:.{0}|\S.*)(" + re.escape(arglist[idx]) + r")(?:(?:[, ][^:\n]*:|:) *(.*)| *)((?:(?:\n|\n\r|\r)^\1 +.*)+)"
 
-                        
                         docstring = re.search(regex, feature_class.__doc__.replace("\t", "    "), flags=re.MULTILINE)
 
                         if docstring != None:
@@ -491,7 +505,10 @@ class PyAPI(object):
         if config["items"]:
 
             features = [self.get_feature(items[feature], items, all_features) for feature in config["items"]]
-            featureSet = sum(features) 
+            if len(features) > 1:
+                featureSet = sum(features) 
+            else:
+                featureSet = features[0]
             return featureSet
         else:
             return None
@@ -505,8 +522,8 @@ class PyAPI(object):
             prop = items[prop_index]
             if prop["class"] == "property":
                 prop_value = prop
-                if "value" in prop_value and prop["value"]:
-                    properties[prop["name"]] = prop_value["value"]
+                if "value" in prop_value and prop_value["value"]:
+                    properties[prop_value["name"]] = prop_value["value"]
         
         all_keys = list(properties.keys()) + ["index"]
 
@@ -514,19 +531,19 @@ class PyAPI(object):
             
             correlated_properties = []
             for other_key in all_keys:
-                index = value.find(other_key)
-                if index != -1 and (index == 0 or value[index -1] != "."):
+                if re.findall("(^|[^a-zA-Z0-9\.])"+other_key+"($|[^a-zA-Z0-9])", value):
                     correlated_properties.append(other_key)
             
-            if value.find("random") == -1 and value.find(".") == -1 and not correlated_properties:
+            if not issubclass(feature_class, deeptrack.features.Feature) or \
+                (value.find("random") == -1 and value.find("lambda") == -1 and not re.findall("\.[a-zA-z]", value) and not correlated_properties):
                 property_string = value
-                properties[key] = eval(property_string, {**all_features, "np": np})
+                properties[key] = eval(property_string, {**all_features, **PACKAGE_DICT})
             else:
                 property_string = ("lambda {parameters}: eval(\"{value}\", {{**all_features, **{more_locals}}})"
                                     .format(parameters=", ".join(correlated_properties),
                                             value=value,
-                                            more_locals = "{" + ", ".join(["\"" + s + "\":" + s for s in correlated_properties + ["np"]])+ "}"))
-                properties[key] = eval(property_string, {"all_features":all_features, "np": np})
+                                            more_locals = "{" + ", ".join(["\"" + s + "\":" + s for s in correlated_properties + AVAILABLE_PACKAGES_NAMES])+ "}"))
+                properties[key] = eval(property_string, {"all_features":all_features, **PACKAGE_DICT})
 
         for prop_index in feature["items"]:
             prop = items[prop_index]
@@ -537,12 +554,6 @@ class PyAPI(object):
 
         feature_instance = feature_class(**properties)
 
-        if issubclass(feature_class, models.ModelFeature):
-            try:
-                model_path = ospath.join("./saves/", feature["name"] + feature["timestamp"] + ".h5")
-                feature_instance.load_weights(model_weights)
-            except:
-                pass
 
         all_features[feature["name"]] = feature_instance
 
@@ -577,6 +588,8 @@ class PyAPI(object):
         config["validations"] = []
         config["properties"] = []
         config["loss"] = []
+        config["validation_size"] = 0
+        config["data_size"] = 0
 
         if not "completed_epochs" in config:
             config["completed_epochs"] = 0
@@ -622,9 +635,11 @@ class PyAPI(object):
                 entrypoint = feature["index"]
                 break
 
-        feature = self.get_features(feature_config[feature_config[entrypoint]["items"][0]], items=feature_config, all_features=all_features)
+        aux = self.get_features(feature_config[feature_config[entrypoint]["items"][0]], items=feature_config, all_features=all_features)
 
-        label_feature = self.get_features(feature_config[feature_config[entrypoint]["items"][1]], items=feature_config, all_features=all_features)
+        feature = aux + self.get_features(feature_config[feature_config[entrypoint]["items"][1]], items=feature_config, all_features=all_features)
+
+        label_feature = self.get_features(feature_config[feature_config[entrypoint]["items"][2]], items=feature_config, all_features=all_features)
 
         if label_feature:
             label_feature = feature + label_feature
@@ -637,12 +652,22 @@ class PyAPI(object):
         labels = label_feature.resolve(is_label=True)
 
         sample_image_file = self.save_image(sample_image, "./tmp/feature.bmp")
+        if "Label" in labels.get_property("name", False, []):
+            for prop in labels.properties:
+                if "name" in prop and prop["name"] == "Label":
+                    propdict = prop
+                    break
+            
+            propdict.pop("hash_key", False)
+            propdict.pop("is_label", False)
+            propdict.pop("output_shape", False)
+            propdict.pop("name", False)
 
-        if not isinstance(labels, dict):
+            labels = [{"name": key, "value": repr(value)} for key, value in propdict.items()]
+        elif not isinstance(labels, dict):
             labels = self.save_image(labels, "./tmp/feature.bmp")
-        else:
-            labels.pop("hash_key", None)
-            labels = [{"name": key, "value": repr(value)} for key, value in labels.items()]
+
+            
 
         return [sample_image_file, labels]
 

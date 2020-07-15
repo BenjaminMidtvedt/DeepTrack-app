@@ -1,8 +1,15 @@
 $color5: #0E103D;
 $color2: #ED9450;
-$color3: #333;
+$color3: #444543;
 $color4: #CC8B86;
 $color1: #966B9D;
+$color6: #FC424A;
+$color7: #A568D4;
+$color8: #4A1834;
+$color9: #A568D4;
+$color10: #159E97;
+$color11: #159E97;
+
 
 
 @font-face {
@@ -15,6 +22,18 @@ $color1: #966B9D;
     font-family: Hack;
     font-weight: normal;
     src: url('../fonts/Hack-Regular.ttf');
+}
+
+
+.math {
+    background-color: $color7;
+}
+.augmentations  {
+    background-color: $color8;
+}
+
+.models {
+    background-color: $color6;
 }
 
 .container {
@@ -147,7 +166,7 @@ $color1: #966B9D;
     width: 100%;
     color: #fff;
     font-size: 20px;
-    height: 100%;
+    height: calc(100vh - 50px);
     overflow: hidden;
     flex-direction: column;
     overflow-x: hidden;
@@ -422,6 +441,8 @@ $color1: #966B9D;
     height: 40px;
     background-color: #191919;
     text-align: left;
+    display: flex;
+    flex-direction: row;
 }
 
 .image-wrapper {
@@ -444,11 +465,6 @@ $color1: #966B9D;
     
 }
 
-img {
-    max-width: 50%;
-    max-height: 50%;
-    width: 50%
-}
 
 #dialog-container {
     display: grid;
