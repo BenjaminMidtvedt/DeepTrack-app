@@ -6,35 +6,8 @@ import importlib
 block_cipher = None
 
 
-dlls = ["concrt140.dll",
-"mfc140.dll",
-"mfc140chs.dll",
-"mfc140cht.dll",
-"mfc140deu.dll",
-"mfc140enu.dll",
-"mfc140esn.dll",
-"mfc140fra.dll",
-"mfc140ita.dll",
-"mfc140jpn.dll",
-"mfc140kor.dll",
-"mfc140rus.dll",
-"mfc140u.dll",
-"mfcm140.dll",
-"mfcm140u.dll",
-"msvcp140.dll",
-"msvcp140_1.dll",
-"msvcp140_2.dll",
-"msvcp140_codecvt_ids.dll",
-"vcamp140.dll",
-"vccorlib140.dll",
-"vcomp140.dll",
-"vcruntime140.dll",
-"vcruntime140_1.dll"]
-
-dlls = [(os.path.join('C:/Windows/System32/', f), '.') for f in dlls]
-
 a = Analysis(['server.py'],
-             pathex=[],
+             pathex=['C:\\Users\\bmidt\\Master Thesis\\DeepTrack-app\\deeptrack-app-win32-x64\\resources\\app\\python_src'],
              binaries=[],
              datas=[(os.path.join(os.path.dirname(importlib.import_module('tensorflow').__file__),
                                   "lite/experimental/microfrontend/python/ops/_audio_microfrontend_op.so"),
@@ -42,8 +15,8 @@ a = Analysis(['server.py'],
                      (os.path.join(os.path.dirname(importlib.import_module('tensorflow').__file__),
                                   "python/keras/engine/base_layer_v1.py"),
                      "tensorflow/python/keras/engine/")
-                     ] + dlls,
-             hiddenimports=['pkg_resources.py2_warn', 'imgaug', 'tensorflow', 'scipy', 'numpy', 'skimage', 'PIL', 'opencv-python'],
+                     ],
+             hiddenimports=['pkg_resources.py2_warn', 'imgaug', 'tensorflow', ''],
              hookspath=[],
              runtime_hooks=[],
              excludes=['deeptrack'],
@@ -55,7 +28,6 @@ for i in range(len(a.binaries)):
     dest, origin, kind = a.binaries[i]
     if '_pywrap_tensorflow_internal' in dest:
         a.binaries[i] = ('tensorflow.python.' + dest, origin, kind)
-
 pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)
 exe = EXE(pyz,

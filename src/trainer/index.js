@@ -4,9 +4,11 @@ import { Typography, Button, Table, TableHead, TableRow, Tab, TableCell, TableBo
 import { RefreshOutlined, FontDownload, GetApp } from "@material-ui/icons"
 import Store from "../store.js"
 import Python from "../PythonInterface.js"
-import { json } from 'd3';
+import {ResultDisplay} from "../models"
 const { dialog } = window.require('electron').remote;
 const fs = window.require('fs');
+
+
 
 export class ImageContainer extends React.Component {
     render() {
@@ -26,8 +28,8 @@ export class ImageContainer extends React.Component {
                     {
                     this.props.label ? 
                         <>
-                        <ResultDisplay title="Input" src={this.props.src}></ResultDisplay>
-                        <ResultDisplay title="Label" src={this.props.label}></ResultDisplay>
+                        <ResultDisplay title="Input" src={this.props.src} width="100%"></ResultDisplay>
+                        <ResultDisplay title="Label" src={this.props.label} width="100%"></ResultDisplay>
                         </> :
                          <div>
                          <Typography color="secondary" variant="h3" >{this.props.errorTitle}</Typography>
@@ -39,49 +41,6 @@ export class ImageContainer extends React.Component {
             </div>
         )
     }
-}
-
-function ResultDisplay(props) {
-
-    return (
-
-            <div style={{width:"50%"}}>
-                {props.title ? 
-                <Typography variant="h4">{props.title}</Typography>:null
-                }
-                {props.src ? 
-                    Array.isArray(props.src) ? 
-                        (<div class="label-wrapper">
-                            <Table>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>
-                                            Label name
-                                        </TableCell>
-                                        <TableCell>
-                                            Label value
-                                        </TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                {props.src.map((row, idx) => (
-                                    <TableRow key={row}>
-                                        <TableCell>
-                                            {row.name}
-                                        </TableCell>
-                                        <TableCell>
-                                            {row.value}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                </TableBody>
-                            </Table>
-                        </div>) : <img style={{width:"100%"}} src={"data:image/bmp;base64, " + props.src.toString("base64")} /> 
-                    : null}
-            </div>
-            
-    )
-
 }
 
 export default class Trainer extends React.Component {

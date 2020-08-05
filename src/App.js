@@ -138,6 +138,7 @@ const useStyles = makeStyles((theme: Theme) =>
     },
     drawerPaper: {
       width: drawerWidth,
+      backgroundColor: "#181B23",
     },
     drawerHeader: {
       display: 'flex',
@@ -147,6 +148,7 @@ const useStyles = makeStyles((theme: Theme) =>
       // necessary for content to be below app bar
       ...theme.mixins.toolbar,
       justifyContent: 'flex-end',
+      backgroundColor:"#181B23"
     },
     content: {
       flexGrow: 1,
@@ -257,7 +259,7 @@ export default function App() {
                 </IconButton>
               </div>
               <Divider />
-              <FeatureStore/>
+              <FeatureStore key={open ? "open" : "closed"}/>
             </Drawer>
             <div
               className={clsx(classes.content, {

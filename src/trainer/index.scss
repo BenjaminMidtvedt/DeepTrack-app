@@ -1,15 +1,35 @@
-$color5: #0E103D;
+$color5: #080925;
 $color2: #ED9450;
 $color3: #444543;
 $color4: #CC8B86;
 $color1: #966B9D;
 $color6: #FC424A;
 $color7: #A568D4;
-$color8: #4A1834;
+$color8: #852f60;
 $color9: #A568D4;
 $color10: #159E97;
 $color11: #159E97;
 
+
+$colors: (
+    math: $color7,
+    augmentations: $color8,
+    models: $color6,
+    scatterers: $color2,
+    aberrations: $color1,
+    features: $color3,
+    optics: $color5,
+    noises: $color4
+);
+
+@each $colorname, $color in $colors {
+    .#{$colorname} {
+        background-color: $color;
+    }
+    .text--#{$colorname} {
+        color: $color;
+    }
+}
 
 
 @font-face {
@@ -25,16 +45,8 @@ $color11: #159E97;
 }
 
 
-.math {
-    background-color: $color7;
-}
-.augmentations  {
-    background-color: $color8;
-}
 
-.models {
-    background-color: $color6;
-}
+
 
 .container {
     width: 100%;
@@ -358,25 +370,7 @@ $color11: #159E97;
     display: flex;
 }
 
-.scatterers{
-    background-color: $color2;
-}
 
-.aberrations{
-    background-color: $color1;
-}
-
-.features {
-    background-color: $color3;
-}
-
-.optics {
-    background-color: $color5;
-}
-
-.noises {
-    background-color: $color4;
-}
 
 .draggable {
 

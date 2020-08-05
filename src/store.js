@@ -31,32 +31,23 @@ const logger = store => next => action => {
     return result
 }
 
+let c = 0
 const cache = store => next => action => {
-    const next_state = store.getState()
-    queue_cache(next_state)
+
+    clearTimeout(c)
+    c = setTimeout(() => {
+        const state = JSON.stringify(store.getState())
+        window.localStorage.setItem("_cached_store", state)
+    }, 1000)
     return next(action)
 }
 
 function load() {
     
-    const files = fs.readdirSync(CACHE)
-    files.sort((a, b) => {
-        return fs.statSync(CACHE + a).mtime.getTime() - 
-               fs.statSync(CACHE + b).mtime.getTime();
-    });
-    if (files.length > 0) {
-        try {
-            const target = files[1]
-            const job = fs.readFileSync(CACHE + target)
-            return JSON.parse(job)
-        } catch {}
-
-        try {
-            const target = files[0]
-            const job = fs.readFileSync(CACHE + target)
-            return JSON.parse(job)
-        } catch {}
-    } 
+    const store = window.localStorage.getItem("_cached_store")
+    if (store) {
+        return JSON.parse(store)
+    }
     return undefined
 }
 

@@ -2,6 +2,7 @@
 const {app, BrowserWindow} = require('electron')
 const path = require('path')
 const url = require('url')
+const { error } = require('console')
 
 function createWindow () {
   // Create the browser window.
@@ -32,33 +33,38 @@ function createWindow () {
 }
 
 let pyProc = null
-let pyProc2 = null
+let pyProcMain = null
 
 const createPyProc = () => {
-  const path = require("path")
-  let script = path.join(__dirname, "/python_src/server.py")
-  let root = path.resolve(__dirname)
-  console.log("Starting python from ", script, root)
-  
-  let port = '' + 2734
+  try {
+    const path = require("path")
+    let script = path.join(__dirname, "/python_src/server.py")
+    let execScript = path.join(__dirname, "/python_src/dist/server/server.exe")
+    let root = path.resolve(__dirname)
+    console.log("Starting python from ", script, root)
+    
+    let port = '' + 2734
 
-  if (false) {
-    pyProc = require('child_process').execFile(script, [port])
-  } else {
-    pyProc = require('child_process').spawn('py', ['-u', script], {cwd: root})
-    pyProc.stdout.on("data", (d) => console.log(d.toString()))
-    pyProc.stderr.on("data", (d) => console.error(d.toString()))
-  }
-  if (pyProc != null) {
-    console.log('child process success on port ' + port)
-  } else {
-    console.log("Something is wrong")
+    if (false) {
+      
+    } else {
+      if (process.platform === "win32") pyProcMain = require('child_process').execFile(execScript, ['-u'], {cwd: root})
+    }
+    if (pyProc != null) {
+      console.log('child process success on port ' + port)
+    } else {
+      console.log("Something is wrong")
+    }
+  } catch {
+    console.log("Server may be down")
   }
 }
 
 const exitPyProc = () => {
+  pyProcMain.kill()
   pyProc.kill()
   pyProc = null
+  pyProcMain = null
 }
 
 

@@ -291,7 +291,7 @@ function SaveModal(props) {
     const { enqueueSnackbar } = useSnackbar();
     function handleClose(shouldSave) {
         if (shouldSave) {
-            const filepath = SAVES_FOLDER + props.item.name + (props.extension || ".dtf")
+            const key = props.item.name 
             
             let list = []
             const snapshot = store.getState().undoable.present.items
@@ -305,18 +305,16 @@ function SaveModal(props) {
                     }
                 }
             }
-
             recurseItem(props.item)
+            const all_saved_features = JSON.parse(window.localStorage.getItem("featureKeys")) || []
+            if (all_saved_features.indexOf(key) === -1) {
+                all_saved_features.push(key)
+                window.localStorage.setItem("featureKeys", JSON.stringify(all_saved_features))
+            } 
+            window.localStorage.setItem(key, JSON.stringify(list))
 
-            fs.writeFile(filepath, JSON.stringify(list),
-                (err) => {
-                    if (err) {
-                        enqueueSnackbar("Could not save file", { variant: "error" })
-                    } else {
-                        enqueueSnackbar("Feature saved to " + filepath, { variant: "success" })
-                    }
 
-                })
+            enqueueSnackbar("Feature saved")
         }
         props.onClose(shouldSave)
     }

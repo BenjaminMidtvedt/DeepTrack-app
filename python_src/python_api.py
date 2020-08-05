@@ -51,6 +51,19 @@ IGNORED_CLASSES = (
 IGNORED_MODULES = (
     "sequences"
 )
+
+import time
+
+
+class Job(dict):
+    def __setitem__(self, key, item):
+        if (key == "timestamp"):
+            return super().__setitem__(key, item)
+        else:
+            ts =  int(round(time.time() * 1000))
+            self["timestamp"] = ts
+            return super().__setitem__(key, item)
+
     
 
 def cached_function(function):
@@ -256,7 +269,7 @@ class PyAPI(object):
 
                 validation_set = []
 
-                for _ in range(64):
+                for _ in range(int(next_model["validation_set_size"])):
                     label_feature.update()
                     validation_set.append((
                         feature.resolve(is_validation=True), 
@@ -579,33 +592,43 @@ class PyAPI(object):
 
     def enqueue_training(self, config):
         import base64
-
-        config["status"] = "Waiting"
+        job = Job(config)
+        job["status"] = "Waiting"
         
-        config["inputs"] = []
-        config["targets"] = []
-        config["predictions"] = []
-        config["validations"] = []
-        config["properties"] = []
-        config["loss"] = []
-        config["validation_size"] = 0
-        config["data_size"] = 0
+        job["inputs"] = []
+        job["targets"] = []
+        job["predictions"] = []
+        job["validations"] = []
+        job["properties"] = []
+        job["loss"] = []
+        job["validation_size"] = 0
+        job["data_size"] = 0
 
-        if not "completed_epochs" in config:
-            config["completed_epochs"] = 0
-        config["epochs"] = int(config["epochs"]) - int(config["completed_epochs"])
+        if not "completed_epochs" in job:
+            job["completed_epochs"] = 0
+        job["epochs"] = int(job["epochs"]) - int(job["completed_epochs"])
 
-        if not "id" in config: 
-            config["id"] = datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + str(np.random.randint(10000))
+        if not "id" in job: 
+            job["id"] = datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + str(np.random.randint(10000))
 
-        if not "model_name" in config: 
-            config["model_name"] = config["name"]
+        if not "model_name" in job: 
+            job["model_name"] = job["name"]
 
-        self.queuedModels.append(config)
+        self.queuedModels.append(job)
         return self.queuedModels
 
-    def get_queue(self):
-        return self.queuedModels
+    def get_queue(self, current=[]):
+        output = []
+        for job in self.queuedModels:
+            for c in current:
+                if c["id"] == self.queuedModels["id"]:
+                    if c["timestamp"] != self.queuedModels["timestamp"]:
+                        output.append(job)
+                    else:
+                        break
+            output.append(job)
+    
+        return output
 
     def pause_queue(self):
         self.paused = True
@@ -715,7 +738,7 @@ class PyAPI(object):
         return np.expand_dims(np.array(image), axis=-1)
 
 
-    def save_image(self, image, name):
+    def save_image(self, images, name):
         ''' Saves an image to disk
 
         Stores an image in the tmp folder. The image is converted to 
@@ -739,24 +762,25 @@ class PyAPI(object):
 
         from PIL import Image
         import base64
+        out = []
+        for f in range(images.shape[-1]):
+            image = np.squeeze(images[..., f])
 
-        image = np.squeeze(image)
+            image -= np.min(image)
+            immax = np.max(image)
+            if immax == 0:
+                immax = 1
+            image  = image / immax  * 255
 
-        image -= np.min(image)
-        immax = np.max(image)
-        if immax == 0:
-            immax = 1
-        image  = image / immax  * 255
+            image = Image.fromarray(np.array(image).astype(np.uint8))
 
-        image = Image.fromarray(np.array(image).astype(np.uint8))
+            tmpfile = io.BytesIO()
 
-        tmpfile = io.BytesIO()
+            image.save(tmpfile, format='bmp')
 
-        image.save(tmpfile, format='bmp')
-
-        tmpfile.seek(0)
-        
-        return tmpfile.getvalue()
+            tmpfile.seek(0)
+            out.append(tmpfile.getvalue())
+        return out
 
     def crop_to_divisible(self, image, divisor):
         ''' Crops the dimensions of an image

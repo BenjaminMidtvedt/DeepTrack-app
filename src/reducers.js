@@ -155,7 +155,7 @@ function injectItems(items, action) {
     const newItems = action.items.map((item, index) => {
         if (!item) return null
         item = {...item}
-        
+        item.index = indexMap[item.index]
         if (item.items) {
             item.items = item.items.map((ind) => indexMap[ind])
         }
@@ -167,7 +167,7 @@ function injectItems(items, action) {
     newItems.slice(1).forEach((item) => {
         items.push(item)
     })
-    console.log(items)
+    console.log("injected", items)
     return items
 }
 
@@ -235,3 +235,12 @@ export function items(state = initialItems, action) {
     }
 }
 
+
+
+function poll_server(features) {
+
+}
+
+export function features(state = initialItems, action) {
+
+}

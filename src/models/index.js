@@ -1,16 +1,36 @@
 import React from 'react';
 import './index.scss';
-import { Typography, Button, Table, TableHead, TableRow, TableCell, TableBody, withStyles, createStyles, InputLabel, FormControl, InputBase, Slider, IconButton, Select, MenuItem, Grid, Switch, FormControlLabel } from "@material-ui/core"
-import { ChevronLeft, Label, PlayArrow } from "@material-ui/icons"
-
+import { Typography, Button, Table, TableHead, TableRow, TableCell, TableBody, withStyles, createStyles, InputLabel, FormControl, InputBase, Slider, IconButton, Select, MenuItem, Grid, Switch, FormControlLabel, Tabs, Tab } from "@material-ui/core"
+import { ChevronLeft, Label, PlayArrow, SignalCellularNullSharp } from "@material-ui/icons"
+import { useSnackbar, withSnackbar } from 'notistack';
 import Python from "../PythonInterface"
 import store, { appPath } from '../store';
 import * as d3 from "d3"
-import { scaleLinear } from 'd3';
+import { scaleLinear, buffer } from 'd3';
 import { GROUPBEGIN, GROUPEND } from 'easy-redux-undo';
 import { addItem, setValue } from '../actions';
 
 const path = window.require('path')
+
+
+export function Image(props) {
+    let [index, setIndex] = React.useState(0);
+    index = Math.min(index, props.sources.length - 1)
+    return (
+        <div>
+            <img {...props} src={"data:image/bmp;base64, " + props.sources[index].toString("base64")}>
+            
+            </img>
+            {props.sources.length > 1 ? 
+                <div style={{marginLeft:10, marginRight:10}}>
+                <Slider valueLabelDisplay="auto" min={0} max={props.sources.length - 1} value={index} onChange={(e, v)=>setIndex(v)}></Slider>
+                </div> : 
+                null}
+           
+        </div>
+        
+    )
+}
 
 
 const MySelect = withStyles((theme) => (
@@ -23,13 +43,14 @@ const {dialog} = window.require('electron').remote
 const fs = window.require('fs')
 
 export function ResultDisplay(props) {
-
+    console.log(props.src)
     return (
-
             <div style={{padding: "5px", height:props.height || "250px", width:props.width || "250px"}}>
                 <Typography variant="h4">{props.title}</Typography>
                 {props.src ? 
-                    Array.isArray(props.src) ? 
+                    !(props.src[0].name) ?
+                        <Image style={{height:"100%", objectFit:"contain"}} sources={props.src} /> 
+                        : 
                         (<div class="label-wrapper">
                             <Table>
                                 <TableHead>
@@ -55,7 +76,7 @@ export function ResultDisplay(props) {
                                 ))}
                                 </TableBody>
                             </Table>
-                        </div>) : <img style={{height:"100%", height:"90%", objectFit:"contain"}} src={"data:image/bmp;base64, " + props.src.toString("base64")} /> 
+                        </div>)
                     : null}
             </div>
             
@@ -161,7 +182,7 @@ class StatusVisualisation extends React.Component {
                 x: 200,
                 y: 200,
                 count: this.props.validation_size,
-                maxCount: 64,
+                maxCount: this.props.validation_set_size,
                 color:"#00D25B"
             }, {
                 title: "Training set",
@@ -257,16 +278,16 @@ class LossVisualisation extends React.Component {
     constructor(props) {
         super(props)
         const { loss } = props
-        if (loss.length > 0) {
+        if (loss && loss.length > 0) {
             this.metrics = Object.keys(loss[0]).filter(key => !key.startsWith("val_")).sort((a, b) => (b === "loss") - (a === "loss"))
-        }
+        } 
     }
 
 
     componentWillReceiveProps(newProps) {
         if (this.metrics.length === 0) {
             const { loss } = newProps
-            if (loss.length > 0) {
+            if (loss && loss.length > 0) {
                 this.metrics = Object.keys(loss[0]).filter(key => !key.startsWith("val_")).sort((a, b) => (a === "loss") - (b === "loss"))
             }
         }
@@ -381,7 +402,13 @@ class LossVisualisation extends React.Component {
                 [].concat((Y || []).map(s => s[metric]), ...additional_metrics)
             )).rangeRound([250, 0])
 
+        let labels = null
+
         if (variable === "epoch") {
+            labels = svg.selectAll(".labels")
+            .data([metric, "validation " + metric])
+            
+
             svg.selectAll("circle").remove()
             const line = d3.line()
                 .curve(d3.curveBasis)
@@ -409,6 +436,8 @@ class LossVisualisation extends React.Component {
             svg.select(".valline").transition().attr("d", validation_line(loss))
             svg.select(".vallineback").transition().attr("d", validation_backline(loss))
         } else {
+            labels = svg.selectAll(".labels")
+            .data([metric])
             svg.select(".line").attr("d", "")
             svg.select(".lineback").attr("d", "")
             svg.select(".valline").attr("d", "")
@@ -426,6 +455,16 @@ class LossVisualisation extends React.Component {
                 .attr("cy", (d, i) => yScale(d[metric]))
              
         }
+
+        let labs = labels.enter()
+        labs.append("text")
+            .attr("x", 500)
+            .attr("y", (d, i) => 25 + i * 25)
+            .style("fill", (d, i) => ["#0090E7", "00D25B"][i])
+            .attr("class", "labels")
+
+        svg.selectAll(".labels").text(d => d)
+        
 
         const axis = d3.axisLeft().scale(yScale)
         const x_axis = d3.axisBottom().scale(xScale)
@@ -486,16 +525,24 @@ function VisualisationPlayer(props) {
 
     return (
         <div>
-            <div>
-                <FormControl variant="outlined">
-                    <InputLabel htmlFor="select-visualiser">Visualiser</InputLabel>
-                    <MySelect native inputProps={{"id":"select-visualiser", "name": "Visualiser"}} label="Visualiser" value={visualiserIndex} onChange={(e) => setVisualiser(e.target.value)}>
-                        <option value={0}>Status</option>
-                        <option value={1}>Loss</option>
-                        <option value={2}>Validation</option>
-                        <option value={3}>Predict</option>
-                    </MySelect>
-                </FormControl>
+            <div style={{marginBottom: 20}}>
+                <Tabs
+                    value={visualiserIndex}
+                    onChange={(e, v) => setVisualiser(v)}
+                    variant="fullWidth">
+                    <Tab  label={"Status"}>
+                        
+                    </Tab>
+                    <Tab  label="Loss">
+                        
+                    </Tab>
+                    <Tab label="Validations">
+                        
+                    </Tab>
+                    <Tab  label="Predict">
+                        
+                    </Tab>
+                </Tabs>
             </div>
             <div hidden={visualiserIndex != 0}>
                 <StatusVisualisation {...props}/>
@@ -555,6 +602,12 @@ class PredictVisualiser extends React.Component {
        Python.predict(files[0].path, store.getState().undoable.present.items, this.props.id, (err, res) => {
             if (res) {
                 this.setState({result: res})
+            } else {
+                this.props.enqueueSnackbar("..." + err.message.slice(-200),
+                    {
+                        variant:"error"
+                    }
+                )
             }
         })
     }
@@ -603,6 +656,7 @@ class PredictVisualiser extends React.Component {
     }
 }
 
+PredictVisualiser = withSnackbar(PredictVisualiser)
 
 const useStyles = (theme) => {
     return ({
@@ -614,7 +668,7 @@ const useStyles = (theme) => {
         },
         textField: {
             margin: "15px 60px 15px 0px",
-            width: 280,
+            width: "40%",
         },
         textFieldLabel: {
             color:"white",
@@ -669,9 +723,23 @@ class Models extends React.Component {
 
     componentDidMount() {
         setInterval(() => {
-            Python.getQueue(null, (err, res) => {
+            const current = this.state.jobQueue.map((job) => ({id:job.id, timestamp:job.timestamp}))
+            Python.getQueue(current, (err, res) => {
                 if (res) {
-                    this.setState({jobQueue: res})
+                    let changed = false;
+                    let old_queue = [...this.state.jobQueue]
+                    old_queue = old_queue.map((job) => {
+                        let index = res.findIndex(v => v.id === job.id)
+                        if (index !== -1) {
+                            changed = true
+                            let item = res.splice(index, 1)[0]
+                            return item
+                        } 
+                        return job
+                    })
+                    changed = changed || res.length > 0
+                    let newQueue = [...old_queue, ...res]
+                    if (changed) {this.setState({jobQueue: newQueue})}
                 } 
             })
         }, 5000)
@@ -751,11 +819,10 @@ class Models extends React.Component {
                                                             let c = setInterval(() => {
                                                                 const sta = store.getState().undoable.present.items
                                                                 const st = sta[sta[model_index].items[0]]
-                                                                console.log(st)
+                                           
                                                                 if (st.items && st.items.length > 4) {
                                                                     st.items.forEach((propdx) => {
                                                                         let prop = sta[propdx]
-                                                                        console.log(prop)
                                                                         if (prop && prop.name === "path") {
                                                                             store.dispatch(setValue(propdx,"'" + path.join(appPath, "/tmp/models/", job.id + ".h5") + "'"))
                                                                             store.dispatch(GROUPEND())
@@ -810,7 +877,7 @@ class Models extends React.Component {
                             <Typography variant="h5">Queue training session</Typography>
                             <FormControl className={classes.textField}>
                                 <InputLabel className={classes.textFieldLabel}>Batch size</InputLabel>
-                                <BootstrapInput variant="filled" id="batch_size" type="number" defaultValue="8" ></BootstrapInput>
+                                <BootstrapInput variant="filled" id="batch_size" type="number" defaultValue="16" ></BootstrapInput>
                             </FormControl>
 
                             <FormControl className={classes.textField}>
@@ -820,19 +887,25 @@ class Models extends React.Component {
 
                             <FormControl className={classes.textField}>
                                 <InputLabel className={classes.textFieldLabel}>Minimum size of training set</InputLabel>
-                                <BootstrapInput id="min_data_size" type="number" defaultValue="500"></BootstrapInput>
+                                <BootstrapInput id="min_data_size" type="number" defaultValue="200"></BootstrapInput>
                             </FormControl>
 
                             <FormControl className={classes.textField}>
                                 <InputLabel className={classes.textFieldLabel}>Maximum size of training set</InputLabel>
-                                <BootstrapInput id="max_data_size" type="number" defaultValue="5000"></BootstrapInput>
+                                <BootstrapInput id="max_data_size" type="number" defaultValue="1000"></BootstrapInput>
                             </FormControl>
+                            
+                            <FormControl className={classes.textField}>
+                                <InputLabel className={classes.textFieldLabel}>Validation set size</InputLabel>
+                                <BootstrapInput id="validation_size" type="number" defaultValue="64" ></BootstrapInput>
+                            </FormControl>
+                            
 
                             <FormControl className={classes.textField}>
-                                <InputLabel className={classes.textFieldLabel}>Validation frequency</InputLabel>
-                                <BootstrapInput id="validation_frequency" type="number" defaultValue="5" ></BootstrapInput>
+                                <InputLabel className={classes.textFieldLabel}>Epochs per validation</InputLabel>
+                                <BootstrapInput id="validation_frequency" type="number" defaultValue="1" ></BootstrapInput>
                             </FormControl>
-
+                            
                             
                             <FormControl className={classes.textField}>
                                 <Button style={{backgroundColor: this.props.theme.palette.success.main, padding:"10px 12px", marginTop:20}} onClick={() => {
@@ -840,11 +913,11 @@ class Models extends React.Component {
                                             config.items = store.getState().undoable.present.items
                                             config.batch_size = document.getElementById("batch_size").value
                                             config.epochs = document.getElementById("number_of_epochs").value
+                                            config.validation_set_size = document.getElementById("validation_size").value
                                             config.validation_freq = document.getElementById("validation_frequency").value
                                             config.min_data_size = document.getElementById("min_data_size").value
                                             config.max_data_size = document.getElementById("max_data_size").value
                                             config.name = "Placeholder name"
-                                            console.log("PRESSED")
                                             Python.enqueueTraining(config, (err, res) => {
                                                 if (res) {
                                                     this.setState({jobQueue: res})

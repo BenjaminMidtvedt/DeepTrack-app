@@ -211,28 +211,31 @@ class ContinuousGenerator(keras.utils.Sequence):
         self.data_generation_thread = threading.Thread(target=self._continuous_get_training_data, daemon=True) 
 
     def __enter__(self):
-        self.epoch = 0
-        self.exit_signal = False
         try:
-            self.data_generation_thread.start()
-        except RuntimeError:
-            self.data_generation_thread = threading.Thread(target=self._continuous_get_training_data, daemon=True)
-            self.data_generation_thread.start()
+            self.epoch = 0
+            self.exit_signal = False
+            try:
+                self.data_generation_thread.start()
+            except RuntimeError:
+                self.data_generation_thread = threading.Thread(target=self._continuous_get_training_data, daemon=True)
+                self.data_generation_thread.start()
 
-        while len(self.data) < self.min_data_size:
-            if self.verbose > 0:
-                print("Generating {0} / {1} samples before starting training".format(len(self.data), self.min_data_size), end="\r")
-            time.sleep(0.5)
+            while len(self.data) < self.min_data_size:
+                if self.verbose > 0:
+                    print("Generating {0} / {1} samples before starting training".format(len(self.data), self.min_data_size), end="\r")
+                time.sleep(0.5)
 
-        self.on_epoch_end()
+            self.on_epoch_end()
+        except Exception as e:
+            self.__exit__()
+            raise e
 
         return self
     
     def __exit__(self, *args):
-        print(*args)
         self.exit_signal = True
         self.data_generation_thread.join()
-        return self
+        return False
 
     
 

@@ -10,6 +10,7 @@ class Python {
     client = pythonClient
 
     callbackWrapper(func) {
+        
         const self = this
         function callbackHandler(error, res) {
 
@@ -20,7 +21,6 @@ class Python {
 
             if ((error && error.name) === "TimeoutExpired") {
                 console.log("timer")
-                return
             }
             return func(error, res)
         }

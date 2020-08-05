@@ -11,6 +11,8 @@
 **/__pycache__/*
 
 # production
+*/build
+*/dist
 /build
 /logs
 /deeptrack-app-*
