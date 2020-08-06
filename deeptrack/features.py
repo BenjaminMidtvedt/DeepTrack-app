@@ -875,7 +875,7 @@ class SampleToMasks(Feature):
                         merge = kwargs["merge_method"]
                     
                     if merge == "add":
-                        output[p0[0]:p0[0]+label.shape[0], p0[1]:p0[1]+label.shape[1], label_index] += label[..., label_index]
+                        output[p0[0]:p0[0]+labelarg.shape[0], p0[1]:p0[1]+labelarg.shape[1], label_index] += labelarg[..., label_index]
                         
                     elif merge == "overwrite":
                         output_slice[labelarg[..., label_index] != 0, label_index] = labelarg[labelarg[..., label_index] != 0, label_index]
