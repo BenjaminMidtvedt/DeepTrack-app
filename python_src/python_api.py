@@ -21,6 +21,10 @@ import io
 import re
 import glob
 from deeptrack import *
+try:
+    os.path.mkdir("./tmp/models/")
+except:
+    pass
 model_cache = glob.glob(os.path.abspath("./tmp/models/*.h5"))
 [os.remove(f) for f in model_cache if os.path.isfile(f)]
 
@@ -763,6 +767,10 @@ class PyAPI(object):
         from PIL import Image
         import base64
         out = []
+        print(images.shape)
+        if images.ndim == 2:
+            images = np.expand_dims(images, axis=-1)
+        
         for f in range(images.shape[-1]):
             image = np.squeeze(images[..., f])
 

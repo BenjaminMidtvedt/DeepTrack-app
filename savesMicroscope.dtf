@@ -1,1 +1,0 @@
-{"class":"feature","key":"optics","type":"Microscope","name":"Microscope","items":[{"class":"featureGroup","name":"sample","default":"","items":[],"type":"deeptrack.features.Feature"},{"class":"featureGroup","name":"objective","default":"","items":[],"type":"deeptrack.features.Feature"}]}

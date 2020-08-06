@@ -19,8 +19,9 @@ function createWindow () {
   createPyProc()
 
   // and load the index.html of the app.
+  console.log(path.join(__dirname, '../build/index.html'))
   const startUrl = process.env.ELECTRON_START_URL || url.format({
-    pathname: path.join(__dirname, '/build/index.html'),
+    pathname: path.join(__dirname, '../build/index.html'),
     protocol: 'file:',
     slashes: true
   });
@@ -38,17 +39,20 @@ let pyProcMain = null
 const createPyProc = () => {
   try {
     const path = require("path")
-    let script = path.join(__dirname, "/python_src/server.py")
-    let execScript = path.join(__dirname, "/python_src/dist/server/server.exe")
-    let root = path.resolve(__dirname)
+    let script = path.join(__dirname, "../", "/python_src/server.py")
+    let execScript = path.join(__dirname, "../", "/python_src/dist/server/server.exe")
+    let root = path.resolve(__dirname + "/../")
     console.log("Starting python from ", script, root)
+    console.log(__dirname)
     
     let port = '' + 2734
 
     if (false) {
       
     } else {
-      if (process.platform === "win32") pyProcMain = require('child_process').execFile(execScript, ['-u'], {cwd: root})
+      if (process.platform === "win32") {
+        pyProcMain = require('child_process').execFile(execScript, ['-u'], {cwd: root})
+      }
     }
     if (pyProc != null) {
       console.log('child process success on port ' + port)
