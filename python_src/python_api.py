@@ -68,7 +68,11 @@ class Job(dict):
             self["timestamp"] = ts
             return super().__setitem__(key, item)
 
-    
+def safe_issubclass(v1, v2):
+    try:
+        return issubclass(v1, v2)
+    except:
+        return False
 
 def cached_function(function):
 
@@ -426,10 +430,10 @@ class PyAPI(object):
             if module_name in IGNORED_MODULES:
                 continue
             for class_name, module_class in classes:
-                if (issubclass(module_class, deeptrack.features.Feature) or (
+                if (safe_issubclass(module_class, deeptrack.features.Feature) or (
                     module_name == "models" and class_name[0].isupper())) \
                     and class_name not in EXCEPTIONS \
-                    and not issubclass(module_class, IGNORED_CLASSES):
+                    and not safe_issubclass(module_class, IGNORED_CLASSES):
 
                     if module_class.__doc__: 
                         description = module_class.__doc__[:module_class.__doc__.find("Parameters")]
@@ -459,14 +463,14 @@ class PyAPI(object):
             if feature_name in feature_dict:
                 arg_dict = {}
                 iterator = None
-                if issubclass(feature_dict[feature_name], deeptrack.features.Feature):
+                if safe_issubclass(feature_dict[feature_name], deeptrack.features.Feature):
                     iterator = feature_dict[feature_name].mro()
                 else:
                     iterator = [feature_dict[feature_name], deeptrack.models._compile]
                     
 
                 for feature_class in iterator:
-                    if issubclass(feature_class, deeptrack.features.Feature):
+                    if safe_issubclass(feature_class, deeptrack.features.Feature):
                         argspec = inspect.getfullargspec(feature_class.__init__)
                     elif callable(feature_class):
                         argspec = inspect.getfullargspec(feature_class)
@@ -551,7 +555,7 @@ class PyAPI(object):
                 if re.findall("(^|[^a-zA-Z0-9\.])"+other_key+"($|[^a-zA-Z0-9])", value):
                     correlated_properties.append(other_key)
             
-            if not issubclass(feature_class, deeptrack.features.Feature) or \
+            if not safe_issubclass(feature_class, deeptrack.features.Feature) or \
                 (value.find("random") == -1 and value.find("lambda") == -1 and not re.findall("\.[a-zA-z]", value) and not correlated_properties):
                 property_string = value
                 properties[key] = eval(property_string, {**all_features, **PACKAGE_DICT})
