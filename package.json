@@ -23,7 +23,7 @@
     "start-prod": "npm run electron",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
-    "publish": "electron-builder build --win --publish --always",
+    "publish": "electron-builder build --win --publish always",
     "dist-all": "electron-builder -mw",
     "build": "react-scripts build",
     "rebuild": "electron-rebuild",
