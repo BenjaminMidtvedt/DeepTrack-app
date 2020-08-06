@@ -23,15 +23,15 @@
     "start-prod": "npm run electron",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
+    "publish": "build -p always",
     "dist-all": "electron-builder -mw",
     "build": "react-scripts build",
-    "rebuild": "electron-rebuild",
+    "rebuild": "electron-rebuild build --win --publish --always",
     "package": "npm run build && electron-packager . --overwrite",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "electron": "electron . --allow-file-access-from-files",
     "test-server": "py ./python_src/server.py",
-    "dev": "nf start -p 3000",
     "build-server": "cd python_src && pyinstaller server.spec --noconfirm",
     "full-compile": "npm run build && npm run build-server && npm run dist"
   },
@@ -54,7 +54,14 @@
   "build": {
     "appId": "com.softmatterlab.deeptrack",
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "publish": [
+        {
+          "provider": "github",
+          "owner": "BenjaminMidtvedt",
+          "repo": "deeptrack-app"
+        }
+      ]
     },
     "mac": {
       "target": "dmg"
@@ -69,7 +76,7 @@
       "./tmp/**/*",
       "package.json"
     ],
-    "asar":false
+    "asar": false
   },
   "devDependencies": {
     "@material-ui/core": "^4.9.10",
@@ -84,6 +91,7 @@
     "electron-forge": "^5.2.4",
     "electron-packager": "^14.2.1",
     "electron-rebuild": "^1.10.0",
+    "electron-updater": "^4.3.4",
     "foreman": "^3.0.1",
     "node-sass": "^4.13.1",
     "notistack": "^0.9.9",
