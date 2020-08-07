@@ -17,7 +17,7 @@ export function Image(props) {
     let [index, setIndex] = React.useState(0);
     index = Math.min(index, props.sources.length - 1)
     return (
-        <div>
+        <div style={props.style}>
             <img {...props} src={"data:image/bmp;base64, " + props.sources[index].toString("base64")}>
             
             </img>
@@ -45,11 +45,11 @@ const fs = window.require('fs')
 export function ResultDisplay(props) {
     console.log(props.src)
     return (
-            <div style={{padding: "5px", height:props.height || "250px", width:props.width || "250px"}}>
+            <div style={{padding: "5px", height:props.height || "250px", width:props.width || "250px", display:"flex", justifyContent: "center", alignItems:"center", flexDirection:"column"}}>
                 <Typography variant="h4">{props.title}</Typography>
                 {props.src ? 
                     !(props.src[0].name) ?
-                        <Image style={{height:"100%", objectFit:"contain"}} sources={props.src} /> 
+                        <Image className="result-image" style={{objectFit:"contain", width:"100%"}} sources={props.src} /> 
                         : 
                         (<div class="label-wrapper">
                             <Table>
