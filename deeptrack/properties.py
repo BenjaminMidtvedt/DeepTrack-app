@@ -19,7 +19,7 @@ PropertyDict
 
 import numpy as np
 from deeptrack.utils import isiterable, hasmethod, get_kwarg_names, kwarg_has_default
-import deeptrack.features
+import deeptrack
 
 
 
@@ -148,6 +148,10 @@ class Property:
             A sampled instance of the `sampling_rule`.
 
         '''
+
+        if isinstance(sampling_rule, deeptrack.Feature):
+            sampling_rule.update(**kwargs)
+            return sampling_rule
 
         if hasmethod(sampling_rule, "sample"):
             # If the ruleset itself implements a sample method,

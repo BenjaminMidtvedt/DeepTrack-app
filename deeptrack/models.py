@@ -41,21 +41,40 @@ def _compile(model: models.Model,
     return model
 
 
-def LoadModel(path, compile=False, **kwargs):
-    '''
-    Parameters
-    ----------
-    path : str
-        Path from which to load the model.
-    compile : bool
-        Whether or not to compile the model upon loading it. If the model uses
-        non-keras metrics or loss function, set this to false.
-    '''
-    model = models.load_model(path, compile=compile)
-    if compile:
-        return model
-    
-    return _compile(model, **kwargs)
+class Model(Feature):
+
+    def __init__(self, model, **kwargs):
+        self.model = model
+        super().__init__(**kwargs)
+
+
+    def __getattr__(self, key):
+        # Allows access to the model methods and properties
+        try:
+            return getattr(super(), key)
+        except AttributeError:
+            return getattr(self.model, key)
+
+class KerasModel(Model):
+    def __init__(self, model,
+                    loss="mae", 
+                    optimizer="adam", 
+                    metrics=[],
+                    compile=True,
+                    add_batch_dimension_on_resolve=True,
+                    **kwargs):
+
+        if compile:
+            model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
+
+        super().__init__(model, add_batch_dimension_on_resolve=add_batch_dimension_on_resolve, metrics=metrics, **kwargs)
+
+    def get(self, image, add_batch_dimension_on_resolve, **kwargs):
+        if add_batch_dimension_on_resolve:
+            image = np.expand_dims(image, axis=0)
+        
+        return self.model.predict(image)
+
 
 
 def FullyConnected(input_shape,
@@ -121,9 +140,9 @@ def FullyConnected(input_shape,
     network.add(output_layer)
 
     
-    return _compile(network, **kwargs)
+    return KerasModel(network, **kwargs)
 
-import traceback
+
 def Convolutional(input_shape=(51, 51, 1),
                  conv_layers_dimensions=(16, 32, 64, 128),
                  dense_layers_dimensions=(32, 32),
@@ -158,39 +177,43 @@ def Convolutional(input_shape=(51, 51, 1),
     keras.models.Model 
         Deep learning network
     """
-   
+
     ### INITIALIZE DEEP LEARNING NETWORK
     network = models.Sequential()
-
+    
     ### CONVOLUTIONAL BASIS
     for conv_layer_number, conv_layer_dimension in zip(range(len(conv_layers_dimensions)), conv_layers_dimensions):
         
         for step in range(steps_per_pooling):
         # add convolutional layer
+            try:
+                if conv_layer_number == 0 and step == 0:
+                    conv_layer = layers.Conv2D(conv_layer_dimension,
+                                            (3, 3),
+                                            activation='relu',
+                                            input_shape=input_shape,
+                                            padding="same")
+                else:
+                    conv_layer = layers.Conv2D(conv_layer_dimension,
+                                            (3, 3), 
+                                            activation='relu',
+                                            padding="same")
+                
+                network.add(conv_layer)
+            except Exception as e:
+                print(e)
             
-            if conv_layer_number == 0 and step == 0:
-                conv_layer = layers.Conv2D(conv_layer_dimension,
-                                        (3, 3),
-                                        activation='relu',
-                                        input_shape=input_shape,
-                                        padding="same")
-            else:
-                conv_layer = layers.Conv2D(conv_layer_dimension,
-                                        (3, 3), 
-                                        activation='relu',
-                                        padding="same")
-
         
         if dropout:
             network.add(layers.SpatialDropout2D(dropout[0]))
             dropout = dropout[1:]
-        
+
         # add pooling layer
 
         pooling_layer_name = 'pooling_' + str(conv_layer_number+1)
         pooling_layer = layers.MaxPooling2D(2, 2, name=pooling_layer_name)
         network.add(pooling_layer)
-    
+
     # FLATTENING
     flatten_layer_name = 'flatten'
     flatten_layer = layers.Flatten(name=flatten_layer_name)
@@ -212,7 +235,7 @@ def Convolutional(input_shape=(51, 51, 1),
     network.add(output_layer)
 
     
-    return _compile(network, **kwargs)
+    return KerasModel(network, **kwargs)
 
 
 # Alias for backwards compatability
@@ -268,7 +291,7 @@ def UNet(input_shape=(None, None, 1),
 
     if layer_function is None:
         layer_function = lambda dimensions: layers.Conv2D(
-            conv_layer_dimension,
+            dimensions,
             kernel_size=3,
             activation="relu",
             padding="same"
@@ -320,7 +343,7 @@ def UNet(input_shape=(None, None, 1),
     model = models.Model(unet_input, layer)
     
     
-    return _compile(model, loss=loss, **kwargs)
+    return KerasModel(model, loss=loss, **kwargs)
 
 
 
@@ -426,9 +449,19 @@ def RNN(input_shape=(51, 51, 1),
     else:
         network.add(output_layer)
 
-    return _compile(network, **kwargs)
+    return KerasModel(network, **kwargs)
 
 
 
 # Alias for backwards compatability
 rnn = RNN
+
+class GAN(Model):
+    def __init__(self, generator: Feature, discriminator: Feature, **kwargs):
+        self.generator = generator
+        self.discriminator = discriminator
+        super().__init__(generator, **kwargs)
+
+    def fit(self, generatorSeed, Y=None, batch_size=32, validation_data=None):
+        if Y and len(X) == len(Y):
+            X = []
