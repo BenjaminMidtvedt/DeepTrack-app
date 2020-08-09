@@ -28,8 +28,8 @@ export class ImageContainer extends React.Component {
                     {
                     this.props.label ? 
                         <>
-                        <ResultDisplay title="Input" src={this.props.src} width="100%"></ResultDisplay>
-                        <ResultDisplay title="Label" src={this.props.label} width="100%"></ResultDisplay>
+                        <ResultDisplay title="Input" src={this.props.src} height="100%" width="100%"></ResultDisplay>
+                        <ResultDisplay title="Label" src={this.props.label} height="100%" width="100%"></ResultDisplay>
                         </> :
                          <div>
                          <Typography color="secondary" variant="h3" >{this.props.errorTitle}</Typography>
@@ -269,8 +269,8 @@ export default class Trainer extends React.Component {
                     >
                         {this.state.comparison ? 
                          <ImageContainer src={this.state.comparison} onRequestRefresh={this.updateComparison.bind(this)}/> :
-                            <Typography variant="h2" style={{color: "#fff", overflow:"wrap", userSelect: "none"}}>
-                                    Drag image(s) to display
+                            <Typography variant="h4" style={{width:"100%", textAlign: 'center', color: "#fff", overflow:"wrap", userSelect: "none"}}>
+                                    Drag image(s) here!
                             </Typography>}
                     </div>
                     

@@ -21,6 +21,7 @@ import io
 import re
 import glob
 from deeptrack import *
+
 try:
     os.makedirs("./tmp/models/", exist_ok=True)
 except:
@@ -53,7 +54,8 @@ IGNORED_CLASSES = (
 )
 
 IGNORED_MODULES = (
-    "sequences"
+    "sequences",
+    "deeptrack"
 )
 
 import time
@@ -220,6 +222,7 @@ class PyAPI(object):
                         break
 
                 if next_model is None:
+                    time.sleep(2)
                     continue
 
                 # cp = keras.callbacks.ModelCheckpoint(next_model["model_path"], save_weights_only=True)

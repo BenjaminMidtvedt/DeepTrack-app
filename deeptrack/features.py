@@ -40,7 +40,7 @@ _SESSION_STRUCT = {
 }
 
 
-class Feature(ABC):
+class Feature:
     ''' Base feature class.
     Features define the image generation process. All features operate
     on lists of images. Most features, such as noise, apply some
@@ -116,7 +116,6 @@ class Feature(ABC):
         self.properties = PropertyDict(**properties)
 
 
-    @abstractmethod
     def get(self, image: Image or List[Image], **kwargs) -> Image or List[Image]:
         '''Method for altering an image
         Abstract method that define how the feature transforms the input. The current
@@ -875,7 +874,7 @@ class SampleToMasks(Feature):
                         merge = kwargs["merge_method"]
                     
                     if merge == "add":
-                        output[p0[0]:p0[0]+label.shape[0], p0[1]:p0[1]+label.shape[1], label_index] += label[..., label_index]
+                        output[p0[0]:p0[0]+labelarg.shape[0], p0[1]:p0[1]+labelarg.shape[1], label_index] += label[..., label_index]
                         
                     elif merge == "overwrite":
                         output_slice[labelarg[..., label_index] != 0, label_index] = labelarg[labelarg[..., label_index] != 0, label_index]

@@ -98,7 +98,6 @@ class GaussianApodization(Aberration):
 
 
         pupil = pupil * np.exp(-(rho / sigma)**2)
-
         return pupil
         
 

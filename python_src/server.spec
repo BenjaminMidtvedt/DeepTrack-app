@@ -66,10 +66,6 @@ a = Analysis(['server.py'],
              win_private_assemblies=False,
              cipher=block_cipher,
              noarchive=False)
-#for i in range(len(a.binaries)):
-#    dest, origin, kind = a.binaries[i]
-#    if '_pywrap_tensorflow_internal' in dest:
-#        a.binaries[i] = (dest, origin, kind)
 
 pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)

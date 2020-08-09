@@ -1,11 +1,14 @@
 {
   "name": "deeptrack",
-  "version": "0.1.0",
+  "version": "0.1.8",
+  "author": "softmatterlab",
   "private": true,
   "dependencies": {
     "@material-ui/lab": "^4.0.0-alpha.49",
     "custom-event": "^1.0.1",
     "d3": "^5.16.0",
+    "electron-log": "^4.2.2",
+    "electron-updater": "^4.3.4",
     "react-window": "^1.8.5",
     "textarea-caret": "^3.1.0",
     "zeromq": "^6.0.0-beta.6",
@@ -23,6 +26,8 @@
     "start-prod": "npm run electron",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
+    "publish": "electron-builder build --win --publish always",
+    "create": "electron-builder build --win --publish never",
     "dist-all": "electron-builder -mw",
     "build": "react-scripts build",
     "rebuild": "electron-rebuild",
@@ -54,22 +59,29 @@
   "build": {
     "appId": "com.softmatterlab.deeptrack",
     "win": {
-      "target": "nsis"
+      "publisherName":["DeepTrackCertificate"],
+      "verifyUpdateCodeSignature": false,
+      "target": "nsis",
+      "publish": [  
+        {
+          "provider": "github",
+          "owner": "BenjaminMidtvedt",
+          "repo": "deeptrack-app"
+        }
+      ]
     },
     "mac": {
       "target": "dmg"
     },
     "files": [
-      "./dist/**/*",
       "./build/**/*",
-      "./index.js",
       "./python_src/**/*",
       "./deeptrack/**/*",
       "./custom_features/**/*",
       "./tmp/**/*",
       "package.json"
     ],
-    "asar":false
+    "asar": false
   },
   "devDependencies": {
     "@material-ui/core": "^4.9.10",

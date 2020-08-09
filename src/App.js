@@ -104,7 +104,7 @@ const AntTab = withStyles((theme: Theme) =>
 
 
 
-const drawerWidth = 210;
+const drawerWidth = 280;
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({

@@ -299,6 +299,7 @@ class ContinuousGenerator(keras.utils.Sequence):
 
     def _get(self, features: Feature or List[Feature], feature_kwargs) -> Image:
         # Updates and resolves a feature or list of features.
+        print("called get")
         if isinstance(features, List):
             for feature in features:
                 feature.update()

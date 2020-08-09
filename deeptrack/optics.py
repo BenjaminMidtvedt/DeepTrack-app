@@ -52,14 +52,21 @@ class Microscope(StructuralFeature):
         if not isinstance(list_of_scatterers, list):
             list_of_scatterers = [list_of_scatterers]
 
-        sample_volume, limits = _create_volume(list_of_scatterers, **kwargs)
+        volume_samples = [scatterer for scatterer in list_of_scatterers if not scatterer.get_property("is_field", default=False)]
+        field_samples = [scatterer for scatterer in list_of_scatterers if scatterer.get_property("is_field", default=False)]
+
+        sample_volume, limits = _create_volume(volume_samples, **kwargs)
         sample_volume = Image(sample_volume)
 
-        for scatterer in list_of_scatterers:
+        for scatterer in volume_samples + field_samples:
             sample_volume.merge_properties_from(scatterer)
 
         imaged_sample = objective.resolve(
-            sample_volume, limits=limits, **kwargs)
+            sample_volume, 
+            limits=limits,
+            fields=field_samples,
+            **kwargs
+        )
 
         upscale = kwargs["upscale"]
         shape = imaged_sample.shape
@@ -119,7 +126,7 @@ class Optics(Feature):
     def __init__(self,
                  NA=0.7,
                  wavelength=0.66e-6,
-                 magnification=1,
+                 magnification=5,
                  resolution=(1e-6, 1e-6, 1e-6),
                  refractive_index_medium=1.33,
                  upscale=1,
@@ -318,8 +325,10 @@ class Fluorescence(Optics):
         pupils = self._pupil(volume.shape[:2], defocus=z_values, **kwargs)
         pupil_iterator = iter(pupils)
 
+        
         # Loop through voluma and convole sample with pupil function
         for i, z in zip(index_iterator, z_iterator):
+
 
             if zero_plane[i]:
                 continue
@@ -389,7 +398,7 @@ class Brightfield(Optics):
 
     '''
 
-    def get(self, illuminated_volume, limits, **kwargs):
+    def get(self, illuminated_volume, limits, fields, **kwargs):
         ''' Convolves the image with a pupil function
         '''
         # Pad volume
@@ -431,17 +440,37 @@ class Brightfield(Optics):
         pupil_step = np.fft.fftshift(pupils[0])
 
         if "illumination" in kwargs:
-            light_in = np.ones(volume.shape[:2])
+            light_in = np.ones(volume.shape[:2], dtype=np.complex)
             light_in = kwargs["illumination"].resolve(light_in, **kwargs)
             light_in = np.fft.fft2(light_in)
         else:
-            light_in = np.zeros(volume.shape[:2])
-            light_in[0, 0] = light_in.size
+            light_in = np.zeros(volume.shape[:2], dtype=np.complex)
+            light_in[0, 0] = light_in.size 
 
         K = 2 * np.pi / kwargs["wavelength"]
 
+        
+
+        field_z = [_get_position(field, return_z=True)[-1] for field in fields]
+        field_offsets = [field.get_property("offset_z", default=0) for field in fields]
+        
+        z = z_limits[1]
         for i, z in zip(index_iterator, z_iterator):
             light_in = light_in * pupil_step
+
+            to_remove = []
+            for idx, fz in enumerate(field_z):
+                if fz < z:
+                    propagation_matrix = self._pupil(fields[idx].shape, defocus=[z - fz - field_offsets[idx] / voxel_size[-1]], include_aberration=False, **kwargs)[0]
+                    propagation_matrix = propagation_matrix * np.exp(1j * voxel_size[-1] * 2 * np.pi / kwargs["wavelength"] * kwargs["refractive_index_medium"] * (z - fz))
+                    light_in += np.fft.fft2(fields[idx][:, :, 0]) *  np.fft.fftshift(propagation_matrix)
+                    to_remove.append(idx)
+
+            for idx in reversed(to_remove):
+                fields.pop(idx)
+                field_z.pop(idx)
+                field_offsets.pop(idx)
+
             if zero_plane[i]:
                 continue
 
@@ -449,6 +478,13 @@ class Brightfield(Optics):
             light = np.fft.ifft2(light_in)
             light_out = light * np.exp(1j * ri_slice * voxel_size[-1] * K)
             light_in = np.fft.fft2(light_out)
+
+        # Add remaining fields
+        for idx, fz in enumerate(field_z):
+            prop_dist = z - fz -  field_offsets[idx] / voxel_size[-1]
+            propagation_matrix = self._pupil(fields[idx].shape, defocus=[prop_dist], include_aberration=False, **kwargs)[0]
+            propagation_matrix = propagation_matrix * np.exp(-1j * voxel_size[-1] * 2 * np.pi / kwargs["wavelength"] * kwargs["refractive_index_medium"] * prop_dist)
+            light_in += np.fft.fft2(fields[idx][:, :, 0]) *  np.fft.fftshift(propagation_matrix)
 
         light_in_focus = light_in * np.fft.fftshift(pupils[-1])
 
@@ -490,13 +526,12 @@ class IlluminationGradient(Feature):
         x = np.arange(image.shape[0])
         y = np.arange(image.shape[1])
 
-        X, Y = np.meshgrid(x, y)
+        X, Y = np.meshgrid(y, x)
 
         amplitude = (X * gradient[0] + Y * gradient[1])
 
         if image.ndim == 3: 
             amplitude = np.expand_dims(amplitude, axis=-1)
-
         amplitude = np.clip(np.abs(image) + amplitude + constant, vmin, vmax)
 
         image = amplitude * image / np.abs(image)
