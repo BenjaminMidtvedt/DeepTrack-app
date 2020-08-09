@@ -458,6 +458,7 @@ export class Feature extends React.Component {
                     e.position = y > 0.5;
                     this.borderTop = false
                     this.borderBottom = false
+                    this.forceUpdate()
                 }}
             >
                 <div draggable

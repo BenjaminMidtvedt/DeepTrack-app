@@ -48,7 +48,7 @@ export function ResultDisplay(props) {
             <div style={{padding: "5px", height:props.height || "250px", width:props.width || "250px", display:"flex", justifyContent: "center", alignItems:"center", flexDirection:"column"}}>
                 <Typography variant="h4">{props.title}</Typography>
                 {props.src ? 
-                    !(props.src[0].name) ?
+                    !(props.src[0].value) ?
                         <Image className="result-image" style={{objectFit:"contain", width:"100%"}} sources={props.src} /> 
                         : 
                         (<div class="label-wrapper">
@@ -125,24 +125,16 @@ class ResultVisualisation extends React.Component {
                 </IconButton>
 
                 <div style={{flexGrow:1, margin:10}}>
-                    <Typography variant="h6">
-                        Input
-                    </Typography>
-                    <ResultDisplay src={this.props.inputs[index]}/>
+
+                    <ResultDisplay title="Input" src={this.props.inputs[index]}/>
                 </div>
 
                 <div style={{flexGrow:1, margin:10}}>
-                    <Typography variant="h6">
-                        Prediction
-                    </Typography>
-                    <ResultDisplay src={((this.props.predictions[frame] || [] )[index] || "")}/>
+                    <ResultDisplay title="Prediction" src={((this.props.predictions[frame] || [] )[index] || "")}/>
                 </div>
 
                 <div style={{flexGrow:1, margin:10}}>
-                    <Typography variant="h6">
-                        Target
-                    </Typography>
-                    <ResultDisplay src={this.props.targets[index]}/>
+                    <ResultDisplay title="Label" src={this.props.targets[index]}/>
                 </div>
                 <IconButton style={{borderRadius: 5, padding:20, transform: "rotate(-90deg)", marginLeft:-90, marginRight: -90}} onClick={()=>{
                         if (!this.props.predictions || this.props.predictions.length === 0) return
@@ -162,7 +154,7 @@ class StatusVisualisation extends React.Component {
         
 
         const svg = d3.select("#svg"+this.props.id)
-          .attr("width", 800)
+          .attr("width", 600)
           .attr("height", 350)
         
         this.__oldData__ = d3.local()
@@ -179,14 +171,14 @@ class StatusVisualisation extends React.Component {
         const data = [
             {
                 title: "Validation set",
-                x: 200,
+                x: 150,
                 y: 200,
                 count: this.props.validation_size,
                 maxCount: this.props.validation_set_size,
                 color:"#00D25B"
             }, {
                 title: "Training set",
-                x: 600,
+                x: 450,
                 y: 200,
                 count: this.props.data_size,
                 maxCount: this.props.max_data_size,
@@ -820,12 +812,12 @@ class Models extends React.Component {
                                                             let c = setInterval(() => {
                                                                 const sta = store.getState().undoable.present.items
                                                                 const st = sta[sta[model_index].items[0]]
-                                           
-                                                                if (st.items && st.items.length > 4) {
+                                                                
+                                                                if (st.items && st.items.length > 3) {
                                                                     st.items.forEach((propdx) => {
                                                                         let prop = sta[propdx]
                                                                         if (prop && prop.name === "path") {
-                                                                            store.dispatch(setValue(propdx,"'" + path.join(appPath, "/tmp/models/", job.id + ".h5") + "'"))
+                                                                            store.dispatch(setValue(propdx,"r'" + path.join(appPath, "/tmp/models/", job.id + ".h5") + "'"))
                                                                             store.dispatch(GROUPEND())
 
                                                                             clearInterval(c)

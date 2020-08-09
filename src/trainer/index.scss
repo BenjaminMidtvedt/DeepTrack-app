@@ -324,8 +324,9 @@ $colors: (
     margin-left: 0;
 }
 
-.header-right {
+.header-right { 
     flex-direction: row-reverse;
+    overflow-x:clip;
     padding-right: 12px;
     height: 100%;
     width:24px;
