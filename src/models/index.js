@@ -726,6 +726,7 @@ class Models extends React.Component {
             const current = this.state.jobQueue.map((job) => ({id:job.id, timestamp:job.timestamp}))
             Python.getQueue(current, (err, res) => {
                 if (res) {
+                    console.log(res)
                     let changed = false;
                     let old_queue = [...this.state.jobQueue]
                     old_queue = old_queue.map((job) => {

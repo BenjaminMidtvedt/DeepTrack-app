@@ -54,7 +54,8 @@ IGNORED_CLASSES = (
 )
 
 IGNORED_MODULES = (
-    "sequences"
+    "sequences",
+    "deeptrack"
 )
 
 import time
@@ -221,6 +222,7 @@ class PyAPI(object):
                         break
 
                 if next_model is None:
+                    time.sleep(2)
                     continue
 
                 # cp = keras.callbacks.ModelCheckpoint(next_model["model_path"], save_weights_only=True)
