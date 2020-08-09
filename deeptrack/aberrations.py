@@ -67,7 +67,6 @@ class Aberration(Feature):
 
 # AMPLITUDE ABERRATIONS
 
-
 class GaussianApodization(Aberration):
     ''' Introduces pupil apodization.
 

@@ -18,8 +18,7 @@ log.info('App starting...');
 
 function createWindow () {
   // Create the browser window.
-
-  autoUpdater.checkForUpdatesAndNotify();
+  if (process.platform === "win32") autoUpdater.checkForUpdatesAndNotify();
 
   const mainWindow = new BrowserWindow({
     width: 1280,
@@ -55,7 +54,7 @@ const createPyProc = () => {
   try {
     const path = require("path")
     let script = path.join(__dirname, "../", "/python_src/server.py")
-    let execScript = path.join(__dirname, "../", "/python_src/dist/server/server.exe")
+    
     let root = path.resolve(__dirname + "/../")
     console.log("Starting python from ", script, root)
     console.log(__dirname)
@@ -66,6 +65,13 @@ const createPyProc = () => {
       
     } else {
       if (process.platform === "win32") {
+        let execScript = path.join(__dirname, "../", "/python_src/dist/server/server.exe")
+        pyProcMain = require('child_process').execFile(execScript, ['-u'], {cwd: root})
+        
+      } else if (process.platform === "darwin") {
+
+        let execScript = path.join(__dirname, "../", "/python_src/dist/server/server")
+        console.log(execScript)
         pyProcMain = require('child_process').execFile(execScript, ['-u'], {cwd: root})
       }
     }
@@ -81,8 +87,6 @@ const createPyProc = () => {
 
 const exitPyProc = () => {
   pyProcMain.kill()
-  pyProc.kill()
-  pyProc = null
   pyProcMain = null
 }
 
