@@ -22,7 +22,7 @@ import re
 import glob
 from deeptrack import *
 try:
-    os.path.mkdir("./tmp/models/")
+    os.makedirs("./tmp/models/", exist_ok=True)
 except:
     pass
 model_cache = glob.glob(os.path.abspath("./tmp/models/*.h5"))

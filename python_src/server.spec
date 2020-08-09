@@ -30,31 +30,46 @@ dlls = ["concrt140.dll",
 "vcomp140.dll",
 "vcruntime140.dll",
 "vcruntime140_1.dll"]
+on_windows = os.path.exists('C:/Windows')
 
-dlls = [(os.path.join('C:/Windows/System32/', f), '.') for f in dlls]
+
+if on_windows:
+    dlls = [(os.path.join('C:/Windows/System32/', f), '.') for f in dlls]
+else:
+    dlls = []
+
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+if not on_windows:
+    hiddenimports = collect_submodules('tensorflow')
+    datas = collect_data_files('tensorflow', subdir=None, include_py_files=True)
+
+    hiddenimports += collect_submodules('skimage')
+    datas += collect_data_files('skimage', subdir=None, include_py_files=True)
+
+    
 
 a = Analysis(['server.py'],
              pathex=[],
              binaries=[],
-             datas=[(os.path.join(os.path.dirname(importlib.import_module('tensorflow').__file__),
+             datas=datas + [(os.path.join(os.path.dirname(importlib.import_module('tensorflow').__file__),
                                   "lite/experimental/microfrontend/python/ops/_audio_microfrontend_op.so"),
                      "tensorflow/lite/experimental/microfrontend/python/ops/"),
                      (os.path.join(os.path.dirname(importlib.import_module('tensorflow').__file__),
                                   "python/keras/engine/base_layer_v1.py"),
                      "tensorflow/python/keras/engine/")
                      ] + dlls,
-             hiddenimports=['pkg_resources.py2_warn', 'imgaug', 'tensorflow', 'scipy', 'numpy', 'skimage', 'PIL', 'opencv-python'],
+             hiddenimports=hiddenimports + ['pkg_resources.py2_warn','tensorflow.compiler.tf2tensorrt', 'imgaug', 'tensorflow', 'tensorflow_core', 'scipy', 'numpy', 'skimage', 'PIL', 'opencv-python', 'zerorpc'],
              hookspath=[],
              runtime_hooks=[],
-             excludes=['deeptrack'],
+             excludes=[],
              win_no_prefer_redirects=False,
              win_private_assemblies=False,
              cipher=block_cipher,
              noarchive=False)
-for i in range(len(a.binaries)):
-    dest, origin, kind = a.binaries[i]
-    if '_pywrap_tensorflow_internal' in dest:
-        a.binaries[i] = ('tensorflow.python.' + dest, origin, kind)
+#for i in range(len(a.binaries)):
+#    dest, origin, kind = a.binaries[i]
+#    if '_pywrap_tensorflow_internal' in dest:
+#        a.binaries[i] = (dest, origin, kind)
 
 pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)

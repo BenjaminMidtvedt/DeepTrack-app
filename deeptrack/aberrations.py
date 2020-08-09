@@ -67,8 +67,6 @@ class Aberration(Feature):
 
 # AMPLITUDE ABERRATIONS
 
-import matplotlib.pyplot as plt
-
 class GaussianApodization(Aberration):
     ''' Introduces pupil apodization.
 
