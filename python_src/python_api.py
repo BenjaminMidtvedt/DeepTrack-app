@@ -243,7 +243,7 @@ class PyAPI(object):
 
                 aux = self.get_features(feature_config[feature_config[entrypoint]["items"][0]], items=feature_config, all_features=all_features)
 
-                feature = aux + self.get_features(feature_config[feature_config[entrypoint]["items"][1]], items=feature_config, all_features=all_features)
+                feature = self.get_features(feature_config[feature_config[entrypoint]["items"][1]], items=feature_config, all_features=all_features)
 
                 label_feature = self.get_features(feature_config[feature_config[entrypoint]["items"][2]], items=feature_config, all_features=all_features)
 
