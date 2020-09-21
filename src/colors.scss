@@ -1,0 +1,66 @@
+
+
+
+$colors: (
+    math: #865901,
+    augmentations: #d570b0,
+    models: #86011a,
+    scatterers: #52b149,
+    aberrations: #d59170,
+    features: #8570d5,
+    optics: #70abd5,
+    noises: #2f562c,
+    background:#373942,
+    accent: #CC8B86
+);
+
+$lightnesses: 
+    "10" 5%, 
+    "20" 12%, 
+    "30" 15%, 
+    "40" 20%, 
+    "50" 25%, 
+    "60" 30%, 
+    "70" 35%, 
+    "80" 40%,
+    "90" 55%,
+    "black" 4%,
+    "dark" 12%,
+    "bright" 60%,
+    "white" 90%;
+
+@each $colorname, $color in $colors {
+    .#{$colorname} {
+        background-color: $color;
+    }
+
+    .text--#{$colorname} {
+        color: $color;
+    }
+
+    @each $suffix, $lightness in $lightnesses {
+        .#{$colorname}--#{$suffix} {
+            background-color: change-color($color: $color, $lightness: $lightness);
+        }
+        
+        .comp--#{$colorname}--#{$suffix} {
+            background-color: complement(change-color($color: $color, $lightness: $lightness));
+        }
+
+        .text--#{$colorname}--#{$suffix} {
+            color: change-color($color: $color, $lightness: $lightness);
+        }
+    }   
+}
+
+.text--emphasis {
+    color: rgba(255, 255, 255, 0.87);
+}
+
+.text {
+    color: rgba(255, 255, 255, 0.6);
+}   
+
+.text--disabled {
+    color: rgba(255, 255, 255, 0.38);
+}

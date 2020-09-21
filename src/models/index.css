@@ -1,0 +1,269 @@
+@charset "UTF-8";
+.chevron {
+  position: relative;
+  text-align: center;
+  margin-top: 12px;
+  padding: 2px;
+  height: 4px;
+  width: 220px;
+}
+
+.chevron:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 51%;
+  background: #6C7293;
+  -webkit-transform: skew(0deg, 10deg);
+          transform: skew(0deg, 10deg);
+}
+
+.chevron:after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 50%;
+  background: #6C7293;
+  -webkit-transform: skew(0deg, -10deg);
+          transform: skew(0deg, -10deg);
+}
+
+​
+.chevronButton {
+  margin-left: -100px;
+  margin-right: -100px;
+}
+
+.rotateLeft {
+  -webkit-transform: rotate(-90deg);
+          transform: rotate(-90deg);
+}
+
+.rotateRight {
+  -webkit-transform: rotate(90deg);
+          transform: rotate(90deg);
+}
+
+iframe {
+  height: calc(100vh - 47px);
+}
+
+.container {
+  width: 100%;
+  height: 100%;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+}
+
+.hoverable-row {
+  cursor: pointer;
+}
+
+.evaluation-wrapper {
+  -webkit-box-orient: horizontal;
+  -webkit-box-direction: normal;
+      -ms-flex-direction: row;
+          flex-direction: row;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  width: calc(100vw - 576px);
+  overflow-x: scroll;
+}
+
+.horizontal {
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+      -ms-flex-direction: horizontal;
+          flex-direction: horizontal;
+}
+
+.base {
+  height: 100%;
+}
+
+.main {
+  width: 100%;
+  resize: horizontal;
+  text-align: center;
+}
+
+.tabs-hor {
+  width: 250px;
+  color: #999;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+}
+
+.tab-hor {
+  -webkit-box-flex: 1;
+      -ms-flex: 1;
+          flex: 1;
+}
+
+.tab-hor:hover {
+  color: #e5e5e5;
+}
+
+.tab-hor-active {
+  border-bottom: 2px solid #e5e5e5;
+  color: #e5e5e5;
+}
+
+.grabbable:hover {
+  cursor: pointer;
+}
+
+.propertyList {
+  background-color: rgba(0, 0, 0, 0.2);
+  font-size: 17px;
+}
+
+.border {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.expand {
+  float: right;
+}
+
+.expand-left {
+  position: relative;
+}
+
+.collapsed {
+  text-indent: 10px;
+}
+
+.add {
+  width: 100%;
+}
+
+.header-right {
+  float: right;
+  height: 100%;
+  display: none;
+}
+
+.header-wrap:hover .header-right {
+  display: block;
+}
+
+.draggable {
+  /* avoid selecting text while dragging */
+  -webkit-user-select: none;
+     -moz-user-select: none;
+      -ms-user-select: none;
+          user-select: none;
+}
+
+.dragAbove {
+  border-top: dashed 2px;
+}
+
+.dragUnder {
+  border-bottom: dashed 2px;
+}
+
+.highlight {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.result-image {
+  width: 100%;
+}
+
+#display-container {
+  width: 100%;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: horizontal;
+  -webkit-box-direction: normal;
+      -ms-flex-direction: row;
+          flex-direction: row;
+}
+
+.image-wrapper {
+  width: 100%;
+  height: 100%;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+}
+
+.image-container {
+  width: 100%;
+  height: 100vh;
+}
+
+img {
+  max-width: 100%;
+  max-height: 100%;
+  width: 100%;
+}
+
+#dialog-container {
+  display: -ms-grid;
+  display: grid;
+  -ms-grid-columns: 140px 200px;
+      grid-template-columns: 140px 200px;
+  -ms-grid-rows: 70px 70px;
+      grid-template-rows: 70px 70px;
+  margin: 4px;
+}
+
+#dialog-text {
+  color: "black";
+  -ms-grid-column: 2;
+      grid-column-start: 2;
+  grid-column-end: end;
+  -ms-grid-row: 1;
+      grid-row-start: 1;
+  grid-row-end: 2;
+  margin: 4px;
+  text-align: center;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+}
+
+#dialog-progress {
+  -ms-grid-column: 2;
+      grid-column-start: 2;
+  grid-column-end: 3;
+  -ms-grid-row: 2;
+      grid-row-start: 2;
+  grid-row-end: 3;
+  margin-left: 10px;
+  margin-top: 20px;
+}
+
+#dialog-progress > * {
+  width: 210px;
+  padding: 1px;
+  background-color: #11529333;
+}
+
+#dialog-image {
+  -ms-grid-column: 1;
+      grid-column-start: 1;
+  grid-column-end: 2;
+  -ms-grid-row: 1;
+      grid-row-start: 1;
+  grid-row-end: 3;
+  margin: 4px;
+}
+/*# sourceMappingURL=index.css.map */

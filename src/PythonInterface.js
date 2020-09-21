@@ -1,7 +1,33 @@
+import store from "./store.js"
+
+let process
+try {
+    process = window.require('electron').remote.require('../public/electron.js').logger;
+} catch {
+    process = window.require('electron').remote.require('../build/electron.js').logger;
+}
+let _process = ""
+setInterval(() => {
+    const p = process()
+    if (p !== _process) {
+        p.stdout.on('data', (data) => {
+            store.dispatch({type: "ON_DATA", text:data})
+        })
+        
+        p.stderr.on('data', (data) => {
+            store.dispatch({type: "ON_DATA", text:data})
+        })
+        _process = p;
+    }
+}, 200)
+
+
 const zerorpc = window.require("zerorpc");
 const pythonClient = new zerorpc.Client();
 
 pythonClient.connect("tcp://127.0.0.1:2734");
+
+
 
 
 class Python {
@@ -89,6 +115,9 @@ class Python {
             pythonClient.invoke("predict", files, config, arg)
         }
         
+    }
+    to_py(config, output, callback) {
+        pythonClient.invoke("to_py", config, output, callback)
     }
 
 }

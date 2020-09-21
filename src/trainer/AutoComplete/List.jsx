@@ -90,7 +90,7 @@ export default class List extends React.Component<ListProps, ListState> {
     if (this.state.selectedItem === item) return;
 
     this.setState({ selectedItem: item }, () => {
-      console.log(this.getPositionInList(item))
+      
       this.list && this.list.scrollToItem(this.getPositionInList())
     });
   };

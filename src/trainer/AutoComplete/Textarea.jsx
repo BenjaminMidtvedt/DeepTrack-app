@@ -195,7 +195,7 @@ class MyReactTextareaAutocomplete extends React.Component<TextareaProps, Textare
   };
 
   _handleChange(e) {
-    console.log(e)
+    
     const caretPosition = e.target.selectionStart
     let newValue = e.target.value
     e.persist()
@@ -311,7 +311,7 @@ class MyReactTextareaAutocomplete extends React.Component<TextareaProps, Textare
     );
     
     this.caretPosition = {start: e.target.selectionStart, end: e.target.selectionEnd}
-    console.log(this.caretPosition)
+    
     this.setState({top:newTop, left:newLeft})
   }
 

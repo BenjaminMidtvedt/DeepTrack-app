@@ -45,7 +45,6 @@ function collect(items) {
             item.items.forEach(i => is_referenced[i] = true)
         }
     }
-    console.log(is_referenced)
     return items.map((item, index) => is_referenced[index] ? item : null)
 }
 
@@ -77,10 +76,11 @@ function dropItem(items, action) {
         action.index = items.length - 1
     }
 
-    return (items.map((item, index) => {
+    const out = items.map((item, index) => {
         if (item && item.items) {
 
             if (item.items.indexOf(action.index) !== -1) {
+                
                 const targetItem = {...item}
                 targetItem.items = targetItem.items.slice()
                 targetItem.items.splice(targetItem.items.indexOf(action.index), 1)
@@ -89,19 +89,18 @@ function dropItem(items, action) {
 
             if (index === action.target) {
                 const itemIndex = action.child
-                console.log(itemIndex) 
                 const targetItem = {...item}
                 targetItem.items = targetItem.items.slice()
 
                 const position = (targetItem.items.indexOf(itemIndex) + action.position) || 0
-                console.log(position, targetItem.items.indexOf(itemIndex), action.position)
                 targetItem.items.splice(position, 0, action.index)
                 item = targetItem
             } 
             
         }
         return item
-    }))
+    })
+    return out
 }
 
 function setName(items, action) {
@@ -167,7 +166,6 @@ function injectItems(items, action) {
     newItems.slice(1).forEach((item) => {
         items.push(item)
     })
-    console.log("injected", items)
     return items
 }
 
@@ -236,11 +234,43 @@ export function items(state = initialItems, action) {
 }
 
 
-
-function poll_server(features) {
-
+/* SERVER LOGGER */
+let restart
+try {
+    restart = window.require('electron').remote.require('../public/electron.js').restart_server;
+} catch {
+    restart = window.require('electron').remote.require('../build/electron.js').restart_server;
 }
 
-export function features(state = initialItems, action) {
+console.log(restart)
+function on_data(state, action) {
+    state = {
+        text: (state.text + action.text.toString()).slice(-1000000)
+    }
+    return state
+}
 
+function clear_text(state, action) {
+    state = {...state}
+    state.text = ""
+    return state
+}
+
+function restart_server(state, action) {
+    state = clear_text(state)
+    restart()
+    return state
+}
+
+export function logger(state = {text: "InitialText\nMoreData"}, action) {
+    switch (action.type) {
+        case "ON_DATA":
+            return on_data(state, action) 
+        case "CLEAR_TEXT":
+            return clear_text(state, action)
+        case "RESTART_SERVER":
+            return restart_server(state, action)
+        default:
+            return state
+    }
 }

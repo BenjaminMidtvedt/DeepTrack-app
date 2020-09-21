@@ -83,4 +83,84 @@ $primary-color: #bbb;
   height:100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+.MuiDrawer-root > * {
+  background-color: inherit !important;
+}
+
+.logger {
+  transition: height 150ms ease-in-out;
+  
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  z-index: 9999;
+  height: 30px;
+  display:grid;
+  grid-template-areas: 
+    "title buttons"
+    "main main";
+  grid-template-columns: 1fr 400px;
+  grid-template-rows: 30px 1fr;
+
+
+    
+  &__title {
+    cursor: pointer;
+    grid-area: title;
+    padding-left: 1em;
+    line-height: 30px;
+  }
+
+  &__buttons {
+    cursor: pointer;
+    grid-area: buttons;
+  }
+
+  &__body {
+    grid-area: main;
+    font-family: Hack;
+    padding: 1em 0.1em 0.1em 1em;
+    overflow-x: hidden;
+    word-break: break-word;
+  }
+
+  :checked {
+    height: 200px;
+  }
+
+}
+
+input[type=checkbox]{
+	height: 0;
+	width: 0;
+  visibility: hidden;
+}
+
+input:checked + .logger {
+  height: 300px;
+}
+
+.logger__inner {
+  overflow-y:scroll;
+  overflow-x: hidden;
+  height:100%;
+}
+
+.fs-chevron {
+  transition: transform 200ms;
+  transform-origin: center;
+  padding-top: 4px;
+}
+
+.chevron-open {
+  transform-origin: center;
+  transform: rotate(90deg);
+}
+
+.chevron-closed {
 }

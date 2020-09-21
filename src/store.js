@@ -1,7 +1,7 @@
 import { combineReducers, createStore, applyMiddleware } from "redux"
 import undoable, {CLEAR, GROUPBEGIN, GROUPEND} from 'easy-redux-undo'
-import { items } from './reducers.js'
-import { addItem, clearStore, CLEAR_STORE } from "./actions"
+import { items, logger } from './reducers.js'
+import { addItem, clearStore } from "./actions"
 
 const fs = window.require('fs')
 const path = window.require('path')
@@ -18,18 +18,10 @@ const itemReducer = combineReducers({
 })
 
 const app = combineReducers({
-    undoable: undoable(itemReducer)
+    undoable: undoable(itemReducer),
+    logger
 })
 
-
-const logger = store => next => action => {
-    console.group(action.type)
-    console.info('dispatching', action)
-    let result = next(action)
-    console.log('next state', store.getState())
-    console.groupEnd()
-    return result
-}
 
 let c = 0
 const cache = store => next => action => {

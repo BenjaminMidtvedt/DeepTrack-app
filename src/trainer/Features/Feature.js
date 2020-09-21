@@ -1,6 +1,6 @@
 import React from 'react';
-import { Dialog, DialogActions, DialogTitle, DialogContent, Collapse, List, ListItem, Tooltip, Input, ListSubheader, Button, ListItemText, DialogContentText, LinearProgress, Typography, IconButton, } from "@material-ui/core"
-import { ExpandMore, Add, CloseOutlined, SaveOutlined, Settings, Memory, Code, Share, FolderOpen } from "@material-ui/icons"
+import { Dialog, DialogActions, DialogTitle, DialogContent, Collapse, List, ListItem, Tooltip, Input, ListSubheader, Button, ListItemText, DialogContentText, LinearProgress } from "@material-ui/core"
+import { ExpandMore, Add, CloseOutlined, SaveOutlined, Settings, Memory, Code, Share } from "@material-ui/icons"
 import {  useSnackbar } from 'notistack';
 import { connect } from 'react-redux'
 import {UNDO, REDO, GROUPBEGIN, GROUPEND} from "easy-redux-undo"
@@ -21,7 +21,6 @@ const path = window.require("path")
 let available_functions = {}
 
 Python.getAvailableFunctions((err, res) => {
-    console.log(err, res)
     if (res) {
         available_functions = res
     }
@@ -97,7 +96,7 @@ function getTriggersFromTree(tree, blacklist) {
     }
 
     tree[0].items.forEach((i) => {tree[i].items.forEach(j => getTriggersFromFeature(j))})
-    console.log(formatedTree)
+    
     return formatedTree
 } 
 
@@ -152,7 +151,7 @@ function AutoCompleteInput(props) {
 
     const [tree, setTree] = React.useState({})
 
-    console.log(props.parent, "input")
+    
     return (
         <AutoComplete
             getInfoBox={getInfoBox}
@@ -222,12 +221,12 @@ class Property extends React.Component {
         const { item, onDelete, parent } = this.props
         const parentType = store.getState().undoable.present.items[parent].key
 
-        console.log(item.index, "property")
+        
 
         return (
             <div className="property">
                 <Tooltip enterDelay={200} title={(item.descriptions && item.descriptions[item.name] && item.descriptions[item.name].length) ? item.descriptions[item.name][1] : ""}>
-                    <div className={parentType}>
+                    <div className={parentType+"--90"}>
                         <div
                             className={"header-wrap darken"}
                             onClick={() => actions.toggleExpand(item.index)}>
@@ -267,7 +266,7 @@ class Property extends React.Component {
                 <div className={"sidebar-item-noscroll"}>
                     <Collapse in={item.expand}>
                         <div className="collapsed">
-                            <div className={parentType}><div className={"darken"}><div className={"darken"}>
+                            <div className={parentType+"--90"}><div className={"darken"}><div className={"darken"}>
                                 <AutoCompleteInput 
                                     parent={item}
                                     name={item.name}
@@ -386,7 +385,7 @@ export class Feature extends React.Component {
                     Object.entries(obj).forEach((value) => {
                         const name = value[0]
                         const obj = value[1]
-                        console.log(obj)
+                        
                         const propDict = {
                             class: "property",
                             name: name,
@@ -425,7 +424,6 @@ export class Feature extends React.Component {
         const { item, onDelete } = this.props
         const { nameError, openSave } = this.state
         
-        console.log(item.index, "feature")
 
         return (
             <div className={"block feature "}
@@ -482,7 +480,7 @@ export class Feature extends React.Component {
                         })
 
                     }}
-                    className={"header-wrap grabbable accent-border " + item.key}
+                    className={"header-wrap grabbable accent-border " + item.key+"--90"}
                     onClick={() => actions.toggleExpand(item.index)}>
 
                     <div className={"expand-wrap " + (item.expand ? " expand-open" : "expand-closed")}>
@@ -541,7 +539,7 @@ export class Feature extends React.Component {
                 <Collapse in={item.expand}>
                     <div className="collapsed">
                         {to_list(item.items || [], item.index)}
-                        <div className={item.key}>
+                        <div className={item.key+"--90"}>
                             <div className={"darken"}>
                                 <Button style={{padding:0}} className={"add"} onClick={() => {
                                     actions.addItem(item.index, {
@@ -715,7 +713,7 @@ export class FeatureGroup extends React.Component {
     render() {
         const { item, onDelete } = this.props
         const { dialogOpen } = this.state
-        console.log(item.index, "group")
+        
         return (
             <div className={"featureGroup"}
                 ref={this._ref}
@@ -749,7 +747,7 @@ export class FeatureGroup extends React.Component {
                     this.draggingOver = false
                     this._update()
                 }}>
-                <div className={this.props.parent && this.props.parent.key}>
+                <div className={this.props.parent && (this.props.parent.key+"--90")}>
                     <div
                     className={"header-wrap grabbable accent-border darken"}
                     onClick={() => this.setState({ isopen: !this.state.isopen })}>
@@ -785,10 +783,10 @@ function SidebarItem(props) {
 
     const {item, headerStyle, itemStyle} = props;
     const {name, items, expand, index, load} = item
-    console.log(index, "sidebar")
+    
     return (
         <div className="sidebar-item-wrapper">
-            <div className="sidebar-item-header" 
+            <div className="sidebar-item-header background--40" 
                  style={headerStyle}
                  onClick={() => actions.toggleExpand(index)}>
                 <div style={{}} className={"sidebar-icon-wrap " + (expand ? " sidebar-icon-open" : " sidebar-icon-closed")}>
@@ -904,8 +902,8 @@ class FeatureSet extends React.Component {
     form = React.createRef()
 
     render() {
-        console.log(store.getState())
-        console.log("root render")
+        
+        
         const { items } = this.props.item 
 
         function handleSave() {
@@ -927,7 +925,7 @@ class FeatureSet extends React.Component {
             <div
                 ref = {ref => this._ref = ref}
                 key={this.state.baseKey}
-                className="featureSet"
+                className="featureSet background--20"
                 onFocus={(e) => {
                     e.target.oldValue = e.target.value
                 }}
@@ -1050,7 +1048,7 @@ function SaveProgress(props) {
 
 function to_list(items, parent) {
     const storeItems = store.getState().undoable.present.items;
-    console.log(items, parent, storeItems)
+    
     return items.map((itemindex, idx) => {
         const item = storeItems[itemindex]
         if (!item) return null
@@ -1076,7 +1074,7 @@ function to_list(items, parent) {
                         item={item}
                         key={item.index}
                         index={item.index}
-                        parent={parent}
+                        parent={storeItems[parent]}
                         // onDelete={() => { items.splice(items.indexOf(item), 1); self.forceUpdate() }} 
                         />
         } else if (item.class === "property") {

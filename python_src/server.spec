@@ -1,6 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 import os
+print(os.path.abspath("./"))
 import importlib
 
 block_cipher = None
@@ -39,12 +40,11 @@ else:
     dlls = []
 
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files
-if not on_windows:
-    hiddenimports = collect_submodules('tensorflow')
-    datas = collect_data_files('tensorflow', subdir=None, include_py_files=True)
 
-    hiddenimports += collect_submodules('skimage')
-    datas += collect_data_files('skimage', subdir=None, include_py_files=True)
+hiddenimports = collect_submodules('tensorflow')
+datas = collect_data_files('tensorflow', subdir=None, include_py_files=True)
+hiddenimports += collect_submodules('skimage')
+datas += collect_data_files('skimage', subdir=None, include_py_files=True)
 
     
 
@@ -66,7 +66,7 @@ a = Analysis(['server.py'],
              win_private_assemblies=False,
              cipher=block_cipher,
              noarchive=False)
-
+a.datas = [d for d in a.datas if not d[0].endswith(".mp4")]
 pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)
 exe = EXE(pyz,
@@ -87,3 +87,9 @@ coll = COLLECT(exe,
                upx=True,
                upx_exclude=[],
                name='server')
+
+
+try:
+    os.unlink("./dist/server/_pywrap_tensorflow_internal.pyd")
+except Exception as e:
+    print(e)

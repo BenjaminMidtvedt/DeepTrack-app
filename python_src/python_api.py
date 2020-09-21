@@ -1,5 +1,6 @@
 import sys
 import os
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 sys.path.append(os.path.abspath("."))
 sys.path.append(os.path.abspath("./python_src/"))
@@ -20,6 +21,7 @@ import json
 import io
 import re
 import glob
+import dts_to_py
 from deeptrack import *
 
 try:
@@ -153,7 +155,6 @@ class PyAPI(object):
 
     @cached_function
     def getAvailableFunctions(self, *args, **kwargs):
-        print("called")
         tree = {
             "np":{"_suggestionData": {"class": "module"}},
             "skimage":{"_suggestionData": {"class": "module"}},
@@ -189,7 +190,7 @@ class PyAPI(object):
                 try:
                     branch[name] = {"_suggestionData": {"class": "function", "signature": "".join(function.__doc__.split("\n")[:2])}}
                 except:
-                    print("still error", name, module)
+                    pass
         
         if depth > maxdepth:
             return
@@ -201,8 +202,7 @@ class PyAPI(object):
                     pass
                 else:
                     didAdd = True
-                if submodule == np.random:
-                    print(branch[name])
+
 
         if not didAdd:
             return False
@@ -337,9 +337,13 @@ class PyAPI(object):
                             time.sleep(0.1)
 
                         if h.history["val_loss"][-1] < min_val:
-                            model.save("./tmp/models/" + next_model["id"] + ".h5")
-                            min_val = h.history["val_loss"][-1]
-
+                            try:
+                                model.save("./tmp/models/" + next_model["id"] + ".h5")
+                                min_val = h.history["val_loss"][-1]
+                            except Exception as e:
+                                # Likely tried to save while loading the model to predict.
+                                print(e)
+                                print("Likely tried to save while loading the model to predict.\n This only means the checkpoint was skipped.")
                         next_model["completed_epochs"] += 1
                         next_model["loss"] += [(dict([(key, item[idx]) for key, item in h.history.items()])) for idx in range(int(next_model["validation_freq"]))]
 
@@ -376,6 +380,7 @@ class PyAPI(object):
             except Exception as e:
                 try: 
                     next_model["status"] = str(e)
+                    print(str(e))
                 except:
                     pass
 
@@ -458,6 +463,11 @@ class PyAPI(object):
 
 
         return features
+
+    def to_py(self, config, target):
+
+        dts_to_py.to_py(config["items"], open(target, 'w'))
+        return True
 
     @cached_function
     def get_feature_properties(self, feature_name):
@@ -559,7 +569,7 @@ class PyAPI(object):
                     correlated_properties.append(other_key)
             
             if not safe_issubclass(feature_class, deeptrack.features.Feature) or \
-                (value.find("random") == -1 and value.find("lambda") == -1 and not re.findall("\.[a-zA-z]", value) and not correlated_properties):
+                (value.find("random") == -1 and value.find("lambda") == -1 and not correlated_properties):
                 property_string = value
                 properties[key] = eval(property_string, {**all_features, **PACKAGE_DICT})
             else:
@@ -682,8 +692,15 @@ class PyAPI(object):
 
         label_feature.update()
 
+        t1 = time.time()
         sample_image = np.squeeze(feature.resolve())
+        t2 = time.time()
+        print("Resolved image in {:06.4f} seconds".format(t2 - t1))
+
+        t1 = time.time()
         labels = label_feature.resolve(is_label=True)
+        t2 = time.time()
+        print("Resolved label in {:06.4f} seconds".format(t2 - t1))
 
         sample_image_file = self.save_image(sample_image, "./tmp/feature.bmp")
         if "Label" in labels.get_property("name", False, []):
@@ -701,7 +718,6 @@ class PyAPI(object):
         elif not isinstance(labels, dict):
             labels = self.save_image(labels, "./tmp/feature.bmp")
 
-            
 
         return [sample_image_file, labels]
 
@@ -770,11 +786,10 @@ class PyAPI(object):
         str
             Name of the file
         '''
-
+        
         from PIL import Image
         import base64
         out = []
-        print(images.shape)
         if images.ndim == 2:
             images = np.expand_dims(images, axis=-1)
         

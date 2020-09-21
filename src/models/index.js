@@ -1,12 +1,11 @@
 import React from 'react';
 import './index.scss';
 import { Typography, Button, Table, TableHead, TableRow, TableCell, TableBody, withStyles, createStyles, InputLabel, FormControl, InputBase, Slider, IconButton, Select, MenuItem, Grid, Switch, FormControlLabel, Tabs, Tab } from "@material-ui/core"
-import { ChevronLeft, Label, PlayArrow, SignalCellularNullSharp } from "@material-ui/icons"
-import { useSnackbar, withSnackbar } from 'notistack';
+import { PlayArrow } from "@material-ui/icons"
+import { withSnackbar } from 'notistack';
 import Python from "../PythonInterface"
 import store, { appPath } from '../store';
 import * as d3 from "d3"
-import { scaleLinear, buffer } from 'd3';
 import { GROUPBEGIN, GROUPEND } from 'easy-redux-undo';
 import { addItem, setValue } from '../actions';
 
@@ -14,11 +13,12 @@ const path = window.require('path')
 
 
 export function Image(props) {
+    
     let [index, setIndex] = React.useState(0);
     index = Math.min(index, props.sources.length - 1)
     return (
         <div style={props.style}>
-            <img {...props} src={"data:image/bmp;base64, " + props.sources[index].toString("base64")}>
+            <img {...props} src={(typeof props.sources[index]) === "string" ? props.sources[index] :"data:image/bmp;base64, " + props.sources[index].toString("base64")}>
             
             </img>
             {props.sources.length > 1 ? 
@@ -35,7 +35,8 @@ export function Image(props) {
 
 const MySelect = withStyles((theme) => (
     createStyles({
-
+        padding: 10,
+        margin:  10
     })
 ))(Select)
 
@@ -43,13 +44,13 @@ const {dialog} = window.require('electron').remote
 const fs = window.require('fs')
 
 export function ResultDisplay(props) {
-    console.log(props.src)
+    
     return (
             <div style={{padding: "5px", height:props.height || "250px", width:props.width || "250px", display:"flex", justifyContent: "center", alignItems:"center", flexDirection:"column"}}>
                 <Typography variant="h4">{props.title}</Typography>
                 {props.src ? 
-                    !(props.src[0].value) ?
-                        <Image className="result-image" style={{objectFit:"contain", width:"100%"}} sources={props.src} /> 
+                    !((typeof props.src[0].name) === "string") ?
+                        <Image className="result-image" style={{objectFit:"contain", width:"100%", maxHeight:"90% "}} sources={props.src} /> 
                         : 
                         (<div class="label-wrapper">
                             <Table>
@@ -471,7 +472,7 @@ class LossVisualisation extends React.Component {
                 <svg id={"svgloss"+this.props.id} style={{width:630, flexShrink:0}}></svg>
                 <form>
 
-                    <FormControl style={{width:200}} variant="outlined">
+                    <FormControl style={{width:200, padding:10}} variant="outlined">
                         <InputLabel htmlFor="select-variable">Variable</InputLabel>
                         <MySelect native inputProps={{"id":"select-variable", "name": "Variable"}} label="Variable" value={this.state.variable} onChange={(e) => {this.setState({variable: e.target.value})}}>
                             <option value="epoch" key="epoch">Epoch</option>
@@ -482,7 +483,7 @@ class LossVisualisation extends React.Component {
                         </MySelect>
                     </FormControl>
 
-                    <FormControl style={{width:200}} variant="outlined">
+                    <FormControl style={{width:200, padding:10}} variant="outlined">
                         <InputLabel htmlFor="select-metric">Metric</InputLabel>
                         <MySelect native inputProps={{"id":"select-metric", "name": "Metric"}} label="Metric" value={this.state.metric} onChange={(e) => {this.setState({metric: e.target.value})}}>
                             {this.metrics.map((key, index) => (
@@ -631,11 +632,9 @@ class PredictVisualiser extends React.Component {
 
         
                             <>
-                                <div style={{width:"100%", height:380, padding: 5}}>
-                                    <Typography variant="h4">{"Input"}</Typography>
-                                    <img style={{objectFit:"contain", width:"100%", height:"90%"}} src={input} alt=""></img> 
-                                </div>
-                                <ResultDisplay title="Prediction" height={380} width={"100%"} src={result} alt=""></ResultDisplay>
+
+                                <ResultDisplay title="Input" height={350} width={"100%"} src={[input]} alt=""></ResultDisplay>
+                                <ResultDisplay title="Prediction" height={350} width={"100%"} src={result} alt=""></ResultDisplay>
                             </>
                             ) : (
                             <Typography variant="h4" style={{color: "#fff"}}>
@@ -656,7 +655,6 @@ const useStyles = (theme) => {
             padding: 25,
             margin: "30px 0",
             borderRadius:5,
-            backgroundColor: "#181B23",
         },
         textField: {
             margin: "15px 60px 15px 0px",
@@ -668,15 +666,9 @@ const useStyles = (theme) => {
         },
         tableHead: {
             fontSize:20,
-            backgroundColor: "#181B23"
-        },
-        tableBody:{
-            
-            color:"#6C7293"
         },
         tableCell:{
             fontSize:16,
-            color:"#6C7293"
         }
     })
 }
@@ -692,8 +684,8 @@ const BootstrapInput = withStyles((theme: Theme) =>
     },
     input: {
       position: 'relative',
-      backgroundColor: "#2A2C31",
       fontSize: 16,
+      backgroundColor: "rgba(0, 0, 0, 0.25)",
       width: "100%",
       padding: '10px 12px',
       transition: theme.transitions.create(['border-color', 'box-shadow']),
@@ -718,7 +710,7 @@ class Models extends React.Component {
             const current = this.state.jobQueue.map((job) => ({id:job.id, timestamp:job.timestamp}))
             Python.getQueue(current, (err, res) => {
                 if (res) {
-                    console.log(res)
+                
                     let changed = false;
                     let old_queue = [...this.state.jobQueue]
                     old_queue = old_queue.map((job) => {
@@ -741,15 +733,16 @@ class Models extends React.Component {
         const { classes } = this.props
         const { value, baseTabValue, jobQueue, validationOpenId } = this.state
         return (
-            <div className="base container horizontal" style={{height: "calc(100vh - 40px)", overflowY:"scroll"}}>
+            <div className="container horizontal background--10" style={{height: "calc(100vh - 40px)", overflowY:"scroll"}}>
 
                 <div style={{width: "100%"}}>
                     
                     <div style={{padding:30}}>
                         {jobQueue.map((job, i) => (
-                            <div key={job.id} className={classes.form}>
+                            <div key={job.id} className={classes.form + " background--20"}>
                                             <VisualisationPlayer {...job}/>
                                                 <Button
+                                                    style={{margin:5}}
                                                         variant="outlined"
                                                         color="primary"
                                                         onClick ={(e) => {
@@ -775,6 +768,7 @@ class Models extends React.Component {
                                                     Save model
                                                 </Button>
                                                 <Button
+                                                    style={{margin:5}}
                                                         variant="outlined"
                                                         color="primary"
                                                         onClick ={(e) => {
@@ -783,6 +777,7 @@ class Models extends React.Component {
                                                     Load configuration
                                                 </Button>
                                                 <Button
+                                                    style={{margin:5}}
                                                         variant="outlined"
                                                         color="primary"
                                                         onClick ={(e) => {
@@ -829,6 +824,7 @@ class Models extends React.Component {
                                                     Load model
                                                 </Button>
                                                 <Button
+                                                    style={{margin:5}}
                                                     variant="outlined"
                                                     color="secondary"
                                                         onClick ={(e) => {
@@ -866,7 +862,7 @@ class Models extends React.Component {
                                         </div>
                                 ))}
 
-                        <form className={classes.form}>
+                        <form className={classes.form + " background--20"}>
                             <Typography variant="h5">Queue training session</Typography>
                             <FormControl className={classes.textField}>
                                 <InputLabel className={classes.textFieldLabel}>Batch size</InputLabel>

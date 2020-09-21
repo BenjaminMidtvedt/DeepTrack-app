@@ -1,3 +1,4 @@
+
 // Modules to control application life and create native browser window
 const {app, BrowserWindow} = require('electron')
 const path = require('path')
@@ -6,6 +7,8 @@ const url = require('url')
 const { error } = require('console')
 
 const { autoUpdater } = require("electron-updater")
+
+
 
 
 autoUpdater.logger = log;
@@ -21,8 +24,8 @@ function createWindow () {
   if (process.platform === "win32") autoUpdater.checkForUpdatesAndNotify();
 
   const mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 720,
+    width: 1920,
+    height: 1080,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: true,
@@ -66,14 +69,32 @@ const createPyProc = () => {
     } else {
       if (process.platform === "win32") {
         let execScript = path.join(__dirname, "../", "/python_src/dist/server/server.exe")
-        pyProcMain = require('child_process').execFile(execScript, ['-u'], {cwd: root})
+        pyProcMain = require('child_process').spawn(execScript, ['-u'], {cwd: root})
         
       } else if (process.platform === "darwin") {
 
         let execScript = path.join(__dirname, "../", "/python_src/dist/server/server")
         console.log(execScript)
-        pyProcMain = require('child_process').execFile(execScript, ['-u'], {cwd: root})
+        pyProcMain = require('child_process').spawn(execScript, ['-u'], {cwd: root})
       }
+      
+      exports.logger = () => {
+        return pyProcMain
+      }
+      exports.restart_server = () => {
+        pyProcMain.kill()
+        if (process.platform === "win32") {
+          let execScript = path.join(__dirname, "../", "/python_src/dist/server/server.exe")
+          pyProcMain = require('child_process').spawn(execScript, ['-u'], {cwd: root})
+          
+        } else if (process.platform === "darwin") {
+  
+          let execScript = path.join(__dirname, "../", "/python_src/dist/server/server")
+          console.log(execScript)
+          pyProcMain = require('child_process').spawn(execScript, ['-u'], {cwd: root})
+        }
+      }
+
     }
     if (pyProc != null) {
       console.log('child process success on port ' + port)

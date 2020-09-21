@@ -1,7 +1,9 @@
 import React from 'react';
 import logo from './logo.svg';
+import './colors.scss'
 import './App.scss';
-import { Tabs, Tab, Drawer } from "@material-ui/core"
+import { Tabs, Tab, Drawer, Tooltip, Button } from "@material-ui/core"
+import { connect } from 'react-redux'
 
 import store, {reset} from "./store.js"
 
@@ -37,7 +39,8 @@ import { MuiThemeProvider, createMuiTheme } from '@material-ui/core';
 import Sidebar from './sidebar';
 import FeatureSet from './trainer/Features/Feature'
 import FeatureStore from './featurestore'
-import { ClearAll, Clear, Restore, DeleteOutline, SaveOutlined, FolderOpen } from '@material-ui/icons';
+import { ClearAll, Clear, Restore, DeleteOutline, SaveOutlined, FolderOpen, Code } from '@material-ui/icons';
+import PythonInterface from './PythonInterface';
 
 
 const fs = window.require('fs')
@@ -70,7 +73,7 @@ const iconstyle = {
 const AntTabs = withStyles((theme: Theme) =>
   createStyles({
     root: {
-      borderBottom: '1px solid #00000022',
+      // borderBottom: '1px solid #00000022', 
     },
     indicator: {
       backgroundColor: theme.palette.primary.main,
@@ -138,7 +141,6 @@ const useStyles = makeStyles((theme: Theme) =>
     },
     drawerPaper: {
       width: drawerWidth,
-      backgroundColor: "#181B23",
     },
     drawerHeader: {
       display: 'flex',
@@ -148,7 +150,6 @@ const useStyles = makeStyles((theme: Theme) =>
       // necessary for content to be below app bar
       ...theme.mixins.toolbar,
       justifyContent: 'flex-end',
-      backgroundColor:"#181B23"
     },
     content: {
       flexGrow: 1,
@@ -188,6 +189,18 @@ export default function App() {
     return {
       onClick: () => setValue(index)
     };
+  }
+
+  function savePython() {
+    const present = store.getState().undoable.present 
+    dialog.showSaveDialog({
+      defaultPath:"MyModel",
+      filters:[
+        {name: 'Python', extensions:['py']}
+      ]
+    }).then(({filePath}) => {
+        if (filePath) PythonInterface.to_py(present, filePath, (err, res) => {if (res) alert("Saved as " + filePath); else alert("Error converting pipeline to python.")})
+    })
   }
 
   function save() {
@@ -239,19 +252,19 @@ export default function App() {
     <Provider store={store}>
       <SnackbarProvider maxSnack={3}>
         <MuiThemeProvider theme={theme}>
-          <div className={classes.root}>
+          <div className={classes.root + " background--dark"}>
             <CssBaseline />
             <Drawer
-              className={classes.drawer}
+              className={classes.drawer + " background--dark"}
               variant="persistent"
               anchor="left"
               open={open}
               classes={{
-                paper: classes.drawerPaper,
+                paper: classes.drawerPaper + " background--dark",
               }}
             >
-              <div className={classes.drawerHeader}>
-                <Typography variant="h4">
+              <div className={classes.drawerHeader + " background--dark"}>
+                <Typography variant="h4" style={{paddingRight:50}}>
                   Features
                 </Typography>
                 <IconButton onClick={handleDrawerClose} style={{height:49}}>
@@ -269,7 +282,7 @@ export default function App() {
               {/* <div className={classes.drawerHeader} /> */}
               
               <Sidebar theme={theme}>
-                <div style={{height:49, display:"flex", width: "100%"}} >
+                <div className="background--20" style={{height:49, display:"flex", width: "100%"}} >
                     <IconButton
                         color="inherit"
                         aria-label="open drawer"
@@ -279,9 +292,20 @@ export default function App() {
                       >
                         <MenuIcon />
                       </IconButton>
-                    <Typography style={{lineHeight:"49px", textAlign:"left", textIndent: 20}} variant="h4">
+                    <Typography style={{lineHeight:"49px", textAlign:"left", textIndent: 10, paddingRight: 70}} variant="h5">
                         DeepTrack 2.0
                     </Typography>
+                    <Tooltip title="Save as python code">
+                    <IconButton
+                        color="inherit"
+                        aria-label=""
+                        onClick={savePython}
+                        edge="end"
+                        className={clsx(classes.menuButton)}
+                      >
+                        <Code></Code>
+                      </IconButton>
+                      </Tooltip>
                     <IconButton
                         color="inherit"
                         aria-label="open drawer"
@@ -314,7 +338,7 @@ export default function App() {
                 <FeatureSet theme={theme} />
               </Sidebar>
               <div id="main">
-                <div style={{ width: "100%", backgroundColor: "#111", flexDirection: "row", display: "flex" }}>
+                <div className="background--black" style={{ width: "100%", flexDirection: "row", display: "flex", paddingLeft:30 }}>
                   <AntTabs value={value}
                     onChange={(e, value) => setValue(value)}>
                     <AntTab label="Visualize dataset">
@@ -337,6 +361,32 @@ export default function App() {
                 <div style={{ width: "100%" }} hidden={value !== 2}>
                   <Base theme={theme}></Base>
                 </div>
+                <input type="checkbox" id="logger__checkbox"/> 
+                <label htmlFor="logger__checkbox" className="logger background--dark">
+
+                  <div className="logger__title">
+                    TERMINAL
+                  </div>
+                  <div className="logger__buttons">
+                    <Button onClick={() => {
+                        const logger = document.getElementById("logger__inner");
+                        logger.scrollTop = logger.scrollHeight - logger.clientHeight;
+                    }}>
+                      Scroll to bottom
+                    </Button>
+                    <Button onClick={() => {store.dispatch({type:"CLEAR_TEXT"})}}>
+                      Clear
+                    </Button>
+                    <Button onClick={() => {store.dispatch({type:"RESTART_SERVER"})}}>
+                      Restart Server
+                    </Button>
+                  </div>
+                  
+                    
+                  <div className="logger__body">
+                    <Logger/>
+                  </div>
+                </label>
               </div>
             </div>
           </div>
@@ -346,6 +396,50 @@ export default function App() {
     </Provider>
   );
 }
+
+
+
+class Logger extends React.Component {
+
+  isScrolledToBottom = true;
+
+  componentDidMount() {
+    this.componentDidUpdate()
+  }
+
+  componentWillUpdate() {
+    const logger = document.getElementById("logger__inner");
+    this.isScrolledToBottom = logger.scrollHeight - logger.clientHeight <= logger.scrollTop + 5;
+  }
+
+  componentDidUpdate() {
+    const logger = document.getElementById("logger__inner");
+    if (this.isScrolledToBottom) logger.scrollTop = logger.scrollHeight - logger.clientHeight;
+  }
+
+  scrollToBottom() {
+    const logger = document.getElementById("logger__inner");
+    if (this.isScrolledToBottom) logger.scrollTop = logger.scrollHeight - logger.clientHeight;
+  }
+
+  render() {
+    return (
+      <div className="logger__inner" id="logger__inner">
+        <pre>
+          {this.props.text}
+        </pre>
+      </div>
+      
+    )
+  }
+}
+
+const mapStateToProps = (state, props) => {
+  return state.logger
+}
+
+Logger = connect(mapStateToProps)(Logger)
+
 
 {/* <div className={classes.appBarShift + " root"}>
             

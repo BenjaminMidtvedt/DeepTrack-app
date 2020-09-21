@@ -20,7 +20,6 @@ const result_style = {
     margin: 20,
     maxHeight: 500,
     borderRadius:5,
-    backgroundColor: "#181B23",
     justifyContent: "center",
     justifyItems: "center",
     alignContent: "center",
@@ -127,7 +126,7 @@ class Display extends React.Component {
                                 <GetApp />
                             </Fab>
                             {results.map((entry, idx) => (
-                                <div key={entry.input + idx} style={result_style}>
+                                <div key={entry.input + idx} style={result_style} className="background--20">
                                     <Typography variant="h4">{"#"+idx}</Typography>
                                     <div style={{width:"100%", height:450, padding: 5}}>
                                         <Typography variant="h4">{"Input"}</Typography>
@@ -170,7 +169,7 @@ class Base extends React.Component {
 
     render() {
         return (
-            <div className="base container horizontal">
+            <div className="container horizontal">
                 <Display></Display>
             </div>
         );

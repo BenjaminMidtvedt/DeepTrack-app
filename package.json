@@ -1,6 +1,6 @@
 {
   "name": "deeptrack",
-  "version": "0.1.8",
+  "version": "0.3.3",
   "author": "softmatterlab",
   "private": true,
   "dependencies": {
@@ -75,10 +75,9 @@
     },
     "files": [
       "./build/**/*",
-      "./python_src/**/*",
-      "./deeptrack/**/*",
+      "./python_src/dist/**/*",
       "./custom_features/**/*",
-      "./tmp/**/*",
+      "./tmp/",
       "package.json"
     ],
     "asar": false
