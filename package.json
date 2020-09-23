@@ -5,6 +5,7 @@
   "private": true,
   "dependencies": {
     "@material-ui/lab": "^4.0.0-alpha.49",
+    "custom-electron-titlebar": "^3.2.4",
     "custom-event": "^1.0.1",
     "d3": "^5.16.0",
     "electron-log": "^4.2.2",
@@ -59,10 +60,12 @@
   "build": {
     "appId": "com.softmatterlab.deeptrack",
     "win": {
-      "publisherName":["DeepTrackCertificate"],
+      "publisherName": [
+        "DeepTrackCertificate"
+      ],
       "verifyUpdateCodeSignature": false,
       "target": "nsis",
-      "publish": [  
+      "publish": [
         {
           "provider": "github",
           "owner": "BenjaminMidtvedt",
