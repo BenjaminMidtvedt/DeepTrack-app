@@ -1,166 +1,176 @@
 $primary-color: #bbb;
 
 .App {
-  text-align: center;
+    text-align: center;
 }
 
 .App-logo {
-  height: 40vmin;
-  pointer-events: none;
+    height: 40vmin;
+    pointer-events: none;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+    .App-logo {
+        animation: App-logo-spin infinite 20s linear;
+    }
 }
 
 .App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+    background-color: #282c34;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(10px + 2vmin);
+    color: white;
 }
 
 .App-link {
-  color: #61dafb;
+    color: #61dafb;
 }
 
 @keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .root {
-  background-color: #000;
-  display: flex;
-  height: 100vh;
-  width: 100vw;
-  flex-direction: row;
-  flex-grow: 1;
+    background-color: #000;
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    flex-direction: row;
+    flex-grow: 1;
 }
 
 .tabs {
-  background-color: #373737;
-  height: 100vh;
-  width: 60px;
-  margin: 0;
-  padding: 0;
+    background-color: #373737;
+    height: 100vh;
+    width: 60px;
+    margin: 0;
+    padding: 0;
 }
 
 .tab {
-  height: 60px;
-  width: 60px;
-  text-align: center;
-  line-height: 70px;
-  fill: #aaa;
+    height: 60px;
+    width: 60px;
+    text-align: center;
+    line-height: 70px;
+    fill: #aaa;
 }
 
 .tab:hover {
-  fill: #f5f5f5
+    fill: #f5f5f5;
 }
 
 .tab-active {
-  border-left: 2px solid #f5f5f5;
-  fill: #f5f5f5;
-  width: 56px;
+    border-left: 2px solid #f5f5f5;
+    fill: #f5f5f5;
+    width: 56px;
 }
 
 .icon {
-  fill: "inherit"
+    fill: "inherit";
 }
 
 #main {
-  width:100%;
-  height:100vh;
-  display: flex;
-  flex-direction: column;
-  position: relative;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
 }
 
 .MuiDrawer-root > * {
-  background-color: inherit !important;
+    background-color: inherit !important;
 }
 
 .logger {
-  transition: height 150ms ease-in-out;
-  
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  left: 0;
-  z-index: 9999;
-  height: 30px;
-  display:grid;
-  grid-template-areas: 
-    "title buttons"
-    "main main";
-  grid-template-columns: 1fr 400px;
-  grid-template-rows: 30px 1fr;
+    transition: height 150ms ease-in-out;
 
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    position: absolute;
+    bottom: 31px;
+    right: 0;
+    left: 0;
+    z-index: 9999;
+    height: 30px;
+    display: grid;
+    grid-template-areas:
+        "title buttons"
+        "main main";
+    grid-template-columns: 1fr 400px;
+    grid-template-rows: 30px 1fr;
 
-    
-  &__title {
-    cursor: pointer;
-    grid-area: title;
-    padding-left: 1em;
-    line-height: 30px;
-  }
+    &__title {
+        cursor: pointer;
+        grid-area: title;
+        padding-left: 1em;
+        line-height: 30px;
+    }
 
-  &__buttons {
-    cursor: pointer;
-    grid-area: buttons;
-  }
+    &__buttons {
+        cursor: pointer;
+        grid-area: buttons;
+    }
 
-  &__body {
-    grid-area: main;
-    font-family: Hack;
-    padding: 1em 0.1em 0.1em 1em;
-    overflow-x: hidden;
-    word-break: break-word;
-  }
+    &__body {
+        grid-area: main;
+        font-family: Hack;
+        padding: 1em 0.1em 0.1em 1em;
+        overflow-x: hidden;
+        word-break: break-word;
+    }
 
-  :checked {
-    height: 200px;
-  }
-
+    :checked {
+        height: 200px;
+    }
 }
 
-input[type=checkbox]{
-	height: 0;
-	width: 0;
-  visibility: hidden;
+input[type="checkbox"] {
+    height: 0;
+    width: 0;
+    visibility: hidden;
 }
 
 input:checked + .logger {
-  height: 300px;
+    height: 300px;
 }
 
 .logger__inner {
-  overflow-y:scroll;
-  overflow-x: hidden;
-  height:100%;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    height: 100%;
 }
 
 .fs-chevron {
-  transition: transform 200ms;
-  transform-origin: center;
-  padding-top: 4px;
+    transition: transform 200ms;
+    transform-origin: center;
+    padding-top: 4px;
 }
 
 .chevron-open {
-  transform-origin: center;
-  transform: rotate(90deg);
+    transform-origin: center;
+    transform: rotate(90deg);
 }
 
 .chevron-closed {
+}
+
+.ylabel {
+    transform: rotate(-90deg);
+    display: flex;
+    transform-origin: center;
+    margin-left: -140px;
+    height: 100%;
+    width: 300px;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    white-space: nowrap;
 }

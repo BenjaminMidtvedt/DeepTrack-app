@@ -13,12 +13,12 @@ import List from "./List";
 import { defaultScrollToItem } from "./utilities";
 
 import type, {
-  TextareaProps,
-  TextareaState,
-  caretPositionType,
-  outputType,
-  triggerType,
-  settingType
+    TextareaProps,
+    TextareaState,
+    caretPositionType,
+    outputType,
+    triggerType,
+    settingType,
 } from "./types";
 
 import { Input } from "@material-ui/core";
@@ -26,1580 +26,1663 @@ import { Input } from "@material-ui/core";
 const DEFAULT_CARET_POSITION = "next";
 
 const POSITION_CONFIGURATION = {
-  X: {
-    LEFT: "rta__autocomplete--left",
-    RIGHT: "rta__autocomplete--right"
-  },
-  Y: {
-    TOP: "rta__autocomplete--top",
-    BOTTOM: "rta__autocomplete--bottom"
-  }
+    X: {
+        LEFT: "rta__autocomplete--left",
+        RIGHT: "rta__autocomplete--right",
+    },
+    Y: {
+        TOP: "rta__autocomplete--top",
+        BOTTOM: "rta__autocomplete--bottom",
+    },
 };
 
 const errorMessage = (message: string) =>
-  console.error(
-    `RTA: dataProvider fails: ${message}
+    console.error(
+        `RTA: dataProvider fails: ${message}
     \nCheck the documentation or create issue if you think it's bug. https://github.com/webscopeio/react-textarea-autocomplete/issues`
-  );
+    );
 
 const reservedRegexChars = [
-  '.',
-  '^',
-  '$',
-  '*',
-  '+',
-  '-',
-  '?',
-  '(',
-  ')',
-  '[',
-  ']',
-  '{',
-  '}',
-  '\\',
-  '|',
-]
+    ".",
+    "^",
+    "$",
+    "*",
+    "+",
+    "-",
+    "?",
+    "(",
+    ")",
+    "[",
+    "]",
+    "{",
+    "}",
+    "\\",
+    "|",
+];
 
-const escapeRegex = text =>
-  [...text]
-    .map(character =>
-      reservedRegexChars.includes(character) ? `\\${character}` : character
-    )
-    .join('')
+const escapeRegex = (text) =>
+    [...text]
+        .map((character) =>
+            reservedRegexChars.includes(character)
+                ? `\\${character}`
+                : character
+        )
+        .join("");
 
 // The main purpose of this component is to figure out to which side the autocomplete should be opened
 type AutocompleteProps = {
-  style: ?Object,
-  className: ?string,
-  innerRef: () => void,
-  boundariesElement: string | HTMLElement,
-  top: ?number,
-  left: ?number,
-  children: *,
-  textareaRef: HTMLElement,
-  renderToBody: ?boolean
+    style: ?Object,
+    className: ?string,
+    innerRef: () => void,
+    boundariesElement: string | HTMLElement,
+    top: ?number,
+    left: ?number,
+    children: *,
+    textareaRef: HTMLElement,
+    renderToBody: ?boolean,
 };
 
-class MyReactTextareaAutocomplete extends React.Component<TextareaProps, TextareaState> {
+class MyReactTextareaAutocomplete extends React.Component<
+    TextareaProps,
+    TextareaState
+> {
+    textareaRef = null;
+    caretPosition = { start: false, end: false };
 
-  textareaRef = null
-  caretPosition = {start:false, end:false}
+    static defaultProps = {
+        movePopupAsYouType: false,
+        value: null,
+        minChar: 1,
+        boundariesElement: "body",
+        scrollToItem: true,
+        textAreaComponent: "textarea",
+        renderToBody: false,
+    };
 
-  static defaultProps = {
-    movePopupAsYouType: false,
-    value: null,
-    minChar: 1,
-    boundariesElement: "body",
-    scrollToItem: true,
-    textAreaComponent: "textarea",
-    renderToBody: false,
-  };
+    state = {
+        suggestionData: null,
+    };
 
-  state = {
-    suggestionData: null
-  }
-
-  constructor(props) {
-    super(props)
-    this._createRegExp();
-    this._handleCaretChange = this._handleCaretChange.bind(this)
-    this._handleChange = this._handleChange.bind(this)
-    this._onFocus = this._onFocus.bind(this)
-    this._onBlur = this._onBlur.bind(this)
-    this._closeAutocomplete = this._closeAutocomplete.bind(this)
-    this._handleTextModify = this._handleTextModify.bind(this)
-    this.escListenerInit()
-  }
-
-  escListenerInit = () => {
-    if (!this.escListener) {
-      this.escListener = Listeners.add(KEY_CODES.ESC, this._closeAutocomplete);
-    }
-  };
-
-  _closeAutocomplete() {
-    this.setState({suggestionData: null})
-  }
-
-  escListenerDestroy = () => {
-    if (this.escListener) {
-      Listeners.remove(this.escListener);
-      this.escListener = null;
-    }
-  };
-
-  componentDidMount() {
-    Listeners.startListen(this.textareaRef);
-    // handle caret change
-    this.textareaRef &&
-      this.textareaRef.addEventListener("focus", this._handleCaretChange);
-    this.textareaRef &&
-      this.textareaRef.addEventListener("click", this._handleCaretChange);
-    this.textareaRef &&
-      this.textareaRef.addEventListener("keydown", this._handleCaretChange);
-
-      this.setState({value: this.props.defaultValue || ""})
-  }
-
-
-  componentDidUpdate({ separators: oldSeparators, value: oldValue }: TextareaProps) {
-    const { separators, value} = this.props;
-    if (Object.keys(oldSeparators).join("") !== Object.keys(separators).join("")) {
-      this._createRegExp();
+    constructor(props) {
+        super(props);
+        this._createRegExp();
+        this._handleCaretChange = this._handleCaretChange.bind(this);
+        this._handleChange = this._handleChange.bind(this);
+        this._onFocus = this._onFocus.bind(this);
+        this._onBlur = this._onBlur.bind(this);
+        this._closeAutocomplete = this._closeAutocomplete.bind(this);
+        this._handleTextModify = this._handleTextModify.bind(this);
+        this.escListenerInit();
     }
 
-    const { selectionStart, selectionEnd } = this.textareaRef;
-    const update = (this.caretPosition.start !== false && this.caretPosition.start !== selectionStart)
-      || (this.caretPosition.end !== false && this.caretPosition.end !== selectionEnd);
-    if (update) this.setCaretPosition(this.caretPosition.start, this.caretPosition.end);
-  }
-
-  componentWillUnmount() {
-    this.escListenerDestroy();
-    Listeners.stopListen(this.textareaRef);
-    // handle caret change
-    this.textareaRef &&
-      this.textareaRef.removeEventListener("focus", this._handleCaretChange);
-    this.textareaRef &&
-      this.textareaRef.removeEventListener("click", this._handleCaretChange);
-    this.textareaRef &&
-      this.textareaRef.removeEventListener("keydown", this._handleCaretChange);
-  }
-
-
-
-
-  _dropdownScroll = (item: HTMLDivElement) => {
-    const { scrollToItem } = this.props;
-  
-    if (!scrollToItem) return;
-  
-    if (scrollToItem === true) {
-      defaultScrollToItem(this.dropdownRef, item);
-      return;
-    }
-  
-    if (typeof scrollToItem !== "function" || scrollToItem.length !== 2) {
-      throw new Error(
-        "`scrollToItem` has to be boolean (true for default implementation) or function with two parameters: container, item."
-      );
-    }
-  
-    scrollToItem(this.dropdownRef, item);
-  };
-
-  setCaretPosition = (position: number = 0) => {
-    if (!this.textareaRef) return;
-    this.textareaRef.focus();
-    this.textareaRef.setSelectionRange(position, position);
-  };
-
-  _handleChange(e) {
-    
-    const caretPosition = e.target.selectionStart
-    let newValue = e.target.value
-    e.persist()
-    this.props.onChange && this.props.onChange(e)
-    let m = null;
-    let areaStartPosition = 0
-
-    while ((m = this.separatorExp.exec(newValue)) !== null) {
-      if (areaStartPosition <= caretPosition && m.index > caretPosition) {
-        break
-      }
-      areaStartPosition = m.index + 1
-    }
-    this.separatorExp.lastIndex = 0
-
-    let areaEndPosition = newValue.length
-    if (m !== null) {
-      areaEndPosition = m.index;
-    }
-
-    let newValueSubString = newValue.slice(areaStartPosition, areaEndPosition)
-
-    let valueItems = newValueSubString.split(/[.)]/g)
-
-    let currentTargetIndex = 0;
-    let lengthSum = areaStartPosition;
-
-    for (currentTargetIndex = 0; currentTargetIndex < valueItems.length; currentTargetIndex++) {
-      lengthSum += valueItems[currentTargetIndex].length
-      if (lengthSum >= caretPosition) {
-        break
-      }
-      lengthSum++;
-    }
-
-    valueItems = valueItems.slice(0, currentTargetIndex + 1)
-
-    const textToReplace = valueItems.length > 0 ? [lengthSum - valueItems[currentTargetIndex].length, lengthSum] : null
-
-    valueItems[0] = valueItems[0].trim()
-    valueItems[currentTargetIndex] = valueItems[currentTargetIndex].replace(/ *$/,"")
-    let selection = this.props.tree
-
-    
-    for (let index = 0; index < valueItems.length - 1; index++) {
-      selection = selection[valueItems[index]]
-      
-      if (!selection) {
-        break
-      }
-    }
-
-
-    let suggestionData = null;
-    if (selection && selection instanceof Object) {
-
-      function score(key) {
-        switch (key) {
-          case "module":
-            return 30
-          case "function":
-            return 20
-          case "property":
-            return 10
-          case "feature":
-            return 0
-          default:
-            return -10
+    escListenerInit = () => {
+        if (!this.escListener) {
+            this.escListener = Listeners.add(
+                KEY_CODES.ESC,
+                this._closeAutocomplete
+            );
         }
-      }
+    };
 
-      suggestionData = Object.entries(selection)
-                            .filter(v => v[0] !== "_suggestionData" && v[0].includes(valueItems[currentTargetIndex]))
-                            .map(v => {return [v[0], v[1]["_suggestionData"]] })
-                            .sort((a, b) => score(b[1].class) - 
-                                            score(a[1].class) + 
-                                            a[0].indexOf(valueItems[currentTargetIndex]) -
-                                            b[0].indexOf(valueItems[currentTargetIndex]))
+    _closeAutocomplete() {
+        this.setState({ suggestionData: null });
     }
 
-    
-    this.caretPosition = {
-      start: e.target.selectionStart,
-      end: e.target.selectionEnd
-    }
-    this.setCaretPosition(this.caretPosition.start, this.caretPosition.end)
-    e.persist()
-    this.setState({
-      suggestionData: suggestionData,
-      textToReplace: textToReplace
-    }, () => {
-      // this._handleCaretChange(e)
-    })
-  }
+    escListenerDestroy = () => {
+        if (this.escListener) {
+            Listeners.remove(this.escListener);
+            this.escListener = null;
+        }
+    };
 
-  _handleCaretChange(e) {
-    let selection = e.target.selectionEnd;
-    if (e.type === "keydown") {
-      switch (e.key) {
-        case "ArrowLeft":
-          selection -= 1;
-          break;
-        case "ArrowRight":
-          selection += 1;
-          break;
-        default:
-          break;
-      }
-    }
-    const { top: newTop, left: newLeft } = getCaretCoordinates(
-      e.target,
-      selection
-    );
-    
-    this.caretPosition = {start: e.target.selectionStart, end: e.target.selectionEnd}
-    
-    this.setState({top:newTop, left:newLeft})
-  }
+    componentDidMount() {
+        Listeners.startListen(this.textareaRef);
+        // handle caret change
+        this.textareaRef &&
+            this.textareaRef.addEventListener("focus", this._handleCaretChange);
+        this.textareaRef &&
+            this.textareaRef.addEventListener("click", this._handleCaretChange);
+        this.textareaRef &&
+            this.textareaRef.addEventListener(
+                "keydown",
+                this._handleCaretChange
+            );
 
-  _onSelect = (item: Object | string) => {
-    const { value } = this.props
-    const { textToReplace } = this.state;
-    if (value[textToReplace[0]] === " ") textToReplace[0]++
-  
-    const newValue = value.slice(0, textToReplace[0]) + item[0] + value.slice(textToReplace[1], value.length)
-    // set the new textarea value and after that set the caret back to its position
-    this.caretPosition = {start:textToReplace[0] + item[0].length, end:textToReplace[0] + item[0].length}
-    this._handleTextModify(newValue)
-      
-  };
-  
-  _onFocus(e) {
-    this.props.onFocus && this.props.onFocus(e)
-    this._handleChange(e)
-  }
-
-  _onBlur(e) {
-    this.props.onBlur && this.props.onBlur(e)
-    if (this._shouldStayOpen(e)) {
-      return;
-    }
-    this._closeAutocomplete()
-    
-  }
-  
-  _shouldStayOpen = (e: SyntheticFocusEvent<*>) => {
-    let el = e.relatedTarget;
-    // IE11 doesn't know about `relatedTarget` // https://stackoverflow.com/a/49325196/2719917
-    if (el === null) {
-      el = document.activeElement;
-    }
-    if (
-      this.dropdownRef &&
-      el instanceof Node &&
-      this.dropdownRef.contains(el)
-    ) {
-      return true;
-    }
-  
-    return false;
-  };
-
-  _createRegExp() {
-    this.separatorExp = new RegExp(
-      "(?:" + this.props.separators.join("|") + ")", "gm"
-    )
-
-    this.substringSeparator = new RegExp(
-      ".", "gm"
-    )
-  }
-
-  getCaretPosition = (): number => {
-    if (!this.textareaRef) {
-      return 0;
+        this.setState({ value: this.props.defaultValue || "" });
     }
 
-    const position = this.textareaRef.selectionEnd;
-    return position;
-  }
+    componentDidUpdate({
+        separators: oldSeparators,
+        value: oldValue,
+    }: TextareaProps) {
+        const { separators, value } = this.props;
+        if (
+            Object.keys(oldSeparators).join("") !==
+            Object.keys(separators).join("")
+        ) {
+            this._createRegExp();
+        }
 
-  _handleTextModify = (text) => {
-    this.props.onChange && this.props.onChange({target:{value:text}})
-  }
+        const { selectionStart, selectionEnd } = this.textareaRef;
+        const update =
+            (this.caretPosition.start !== false &&
+                this.caretPosition.start !== selectionStart) ||
+            (this.caretPosition.end !== false &&
+                this.caretPosition.end !== selectionEnd);
+        if (update)
+            this.setCaretPosition(
+                this.caretPosition.start,
+                this.caretPosition.end
+            );
+    }
 
-  render() {
-    const {
-      loadingComponent: Loader,
-      style,
-      className,
-      listStyle,
-      itemStyle,
-      boundariesElement,
-      movePopupAsYouType,
-      listClassName,
-      itemClassName,
-      dropdownClassName,
-      dropdownStyle,
-      containerStyle,
-      containerClassName,
-      loaderStyle,
-      loaderClassName,
-      textAreaComponent,
-      renderToBody,
-      component,
-      value
-    } = this.props;
-    const {
-      left,
-      top,
-      textToReplace,
-      suggestionData
-    } = this.state;
-    const isAutocompleteOpen = suggestionData && suggestionData.length > 0
-    // const {} = this.state
+    componentWillUnmount() {
+        this.escListenerDestroy();
+        Listeners.stopListen(this.textareaRef);
+        // handle caret change
+        this.textareaRef &&
+            this.textareaRef.removeEventListener(
+                "focus",
+                this._handleCaretChange
+            );
+        this.textareaRef &&
+            this.textareaRef.removeEventListener(
+                "click",
+                this._handleCaretChange
+            );
+        this.textareaRef &&
+            this.textareaRef.removeEventListener(
+                "keydown",
+                this._handleCaretChange
+            );
+    }
 
-    return (
-      <>
-        <Input
-          inputRef={ref => this.textareaRef = ref}
-          className={`rta__textarea ${className || ""}`}
-          onChange={this._handleChange}
-          onClick={
-            // The textarea itself is outside the autoselect dropdown.
-            this._onClick
-          }
-          onFocus = {this._onFocus}
-          onBlur={this._onBlur}
-          value={value}
-          style={style}></Input>
+    _dropdownScroll = (item: HTMLDivElement) => {
+        const { scrollToItem } = this.props;
 
-        {isAutocompleteOpen && (
-          <Autocomplete
-            innerRef={ref => {
-              // $FlowFixMe
-              this.dropdownRef = ref;
-            }}
-            top={top}
-            left={left}
-            style={dropdownStyle}
-            className={dropdownClassName}
-            movePopupAsYouType={movePopupAsYouType}
-            boundariesElement={boundariesElement}
-            textareaRef={this.textareaRef}
-            renderToBody={renderToBody}
-          >
-            {suggestionData && component && textToReplace && (
-              <List
-                getInfoBox = {this.props.getInfoBox}
-                onTextModify = {this._handleTextModify}
-                values={suggestionData}
-                component={component}
-                style={listStyle}
-                className={listClassName}
-                itemClassName={itemClassName}
-                itemStyle={itemStyle}
-                getTextToReplace={() => textToReplace}
-                onSelect={this._onSelect}
-                dropdownScroll={this._dropdownScroll}
-              />
-            )}
-          </Autocomplete>
-        )}
-      </>
-    )
-  }
+        if (!scrollToItem) return;
+
+        if (scrollToItem === true) {
+            defaultScrollToItem(this.dropdownRef, item);
+            return;
+        }
+
+        if (typeof scrollToItem !== "function" || scrollToItem.length !== 2) {
+            throw new Error(
+                "`scrollToItem` has to be boolean (true for default implementation) or function with two parameters: container, item."
+            );
+        }
+
+        scrollToItem(this.dropdownRef, item);
+    };
+
+    setCaretPosition = (position: number = 0) => {
+        if (!this.textareaRef) return;
+        this.textareaRef.focus();
+        this.textareaRef.setSelectionRange(position, position);
+    };
+
+    _handleChange(e) {
+        const caretPosition = e.target.selectionStart;
+        let newValue = e.target.value;
+        e.persist();
+        this.props.onChange && this.props.onChange(e);
+        let m = null;
+        let areaStartPosition = 0;
+
+        while ((m = this.separatorExp.exec(newValue)) !== null) {
+            if (areaStartPosition <= caretPosition && m.index > caretPosition) {
+                break;
+            }
+            areaStartPosition = m.index + 1;
+        }
+        this.separatorExp.lastIndex = 0;
+
+        let areaEndPosition = newValue.length;
+        if (m !== null) {
+            areaEndPosition = m.index;
+        }
+
+        let newValueSubString = newValue.slice(
+            areaStartPosition,
+            areaEndPosition
+        );
+
+        let valueItems = newValueSubString.split(/[.)]/g);
+
+        let currentTargetIndex = 0;
+        let lengthSum = areaStartPosition;
+
+        for (
+            currentTargetIndex = 0;
+            currentTargetIndex < valueItems.length;
+            currentTargetIndex++
+        ) {
+            lengthSum += valueItems[currentTargetIndex].length;
+            if (lengthSum >= caretPosition) {
+                break;
+            }
+            lengthSum++;
+        }
+
+        valueItems = valueItems.slice(0, currentTargetIndex + 1);
+
+        const textToReplace =
+            valueItems.length > 0
+                ? [lengthSum - valueItems[currentTargetIndex].length, lengthSum]
+                : null;
+
+        valueItems[0] = valueItems[0].trim();
+        valueItems[currentTargetIndex] = valueItems[currentTargetIndex].replace(
+            / *$/,
+            ""
+        );
+        let selection = this.props.tree;
+
+        for (let index = 0; index < valueItems.length - 1; index++) {
+            selection = selection[valueItems[index]];
+
+            if (!selection) {
+                break;
+            }
+        }
+
+        let suggestionData = null;
+        if (selection && selection instanceof Object) {
+            function score(key) {
+                switch (key) {
+                    case "module":
+                        return 30;
+                    case "function":
+                        return 20;
+                    case "property":
+                        return 10;
+                    case "feature":
+                        return 0;
+                    default:
+                        return -10;
+                }
+            }
+
+            suggestionData = Object.entries(selection)
+                .filter(
+                    (v) =>
+                        v[0] !== "_suggestionData" &&
+                        v[0].includes(valueItems[currentTargetIndex])
+                )
+                .map((v) => {
+                    return [v[0], v[1]["_suggestionData"]];
+                })
+                .sort(
+                    (a, b) =>
+                        score(b[1].class) -
+                        score(a[1].class) +
+                        a[0].indexOf(valueItems[currentTargetIndex]) -
+                        b[0].indexOf(valueItems[currentTargetIndex])
+                );
+        }
+
+        this.caretPosition = {
+            start: e.target.selectionStart,
+            end: e.target.selectionEnd,
+        };
+        this.setCaretPosition(this.caretPosition.start, this.caretPosition.end);
+        e.persist();
+        this.setState(
+            {
+                suggestionData: suggestionData,
+                textToReplace: textToReplace,
+            },
+            () => {
+                // this._handleCaretChange(e)
+            }
+        );
+    }
+
+    _handleCaretChange(e) {
+        let selection = e.target.selectionEnd;
+        if (e.type === "keydown") {
+            switch (e.key) {
+                case "ArrowLeft":
+                    selection -= 1;
+                    break;
+                case "ArrowRight":
+                    selection += 1;
+                    break;
+                default:
+                    break;
+            }
+        }
+        const { top: newTop, left: newLeft } = getCaretCoordinates(
+            e.target,
+            selection
+        );
+
+        this.caretPosition = {
+            start: e.target.selectionStart,
+            end: e.target.selectionEnd,
+        };
+
+        this.setState({ top: newTop, left: newLeft });
+    }
+
+    _onSelect = (item: Object | string) => {
+        const { value } = this.props;
+        const { textToReplace } = this.state;
+        if (value[textToReplace[0]] === " ") textToReplace[0]++;
+
+        const newValue =
+            value.slice(0, textToReplace[0]) +
+            item[0] +
+            value.slice(textToReplace[1], value.length);
+        // set the new textarea value and after that set the caret back to its position
+        this.caretPosition = {
+            start: textToReplace[0] + item[0].length,
+            end: textToReplace[0] + item[0].length,
+        };
+        this._handleTextModify(newValue);
+    };
+
+    _onFocus(e) {
+        this.props.onFocus && this.props.onFocus(e);
+        this._handleChange(e);
+    }
+
+    _onBlur(e) {
+        this.props.onBlur && this.props.onBlur(e);
+        if (this._shouldStayOpen(e)) {
+            return;
+        }
+        this._closeAutocomplete();
+    }
+
+    _shouldStayOpen = (e: SyntheticFocusEvent<*>) => {
+        let el = e.relatedTarget;
+        // IE11 doesn't know about `relatedTarget` // https://stackoverflow.com/a/49325196/2719917
+        if (el === null) {
+            el = document.activeElement;
+        }
+        if (
+            this.dropdownRef &&
+            el instanceof Node &&
+            this.dropdownRef.contains(el)
+        ) {
+            return true;
+        }
+
+        return false;
+    };
+
+    _createRegExp() {
+        this.separatorExp = new RegExp(
+            "(?:" + this.props.separators.join("|") + ")",
+            "gm"
+        );
+
+        this.substringSeparator = new RegExp(".", "gm");
+    }
+
+    getCaretPosition = (): number => {
+        if (!this.textareaRef) {
+            return 0;
+        }
+
+        const position = this.textareaRef.selectionEnd;
+        return position;
+    };
+
+    _handleTextModify = (text) => {
+        this.props.onChange && this.props.onChange({ target: { value: text } });
+    };
+
+    render() {
+        const {
+            loadingComponent: Loader,
+            style,
+            className,
+            listStyle,
+            itemStyle,
+            boundariesElement,
+            movePopupAsYouType,
+            listClassName,
+            itemClassName,
+            dropdownClassName,
+            dropdownStyle,
+            containerStyle,
+            containerClassName,
+            loaderStyle,
+            loaderClassName,
+            textAreaComponent,
+            renderToBody,
+            component,
+            placeholder,
+            value,
+        } = this.props;
+        const { left, top, textToReplace, suggestionData } = this.state;
+        const isAutocompleteOpen = suggestionData && suggestionData.length > 0;
+        // const {} = this.state
+
+        return (
+            <>
+                <Input
+                    inputRef={(ref) => (this.textareaRef = ref)}
+                    className={`rta__textarea ${className || ""}`}
+                    onChange={this._handleChange}
+                    placeholder={placeholder}
+                    onClick={
+                        // The textarea itself is outside the autoselect dropdown.
+                        this._onClick
+                    }
+                    onFocus={this._onFocus}
+                    onBlur={this._onBlur}
+                    value={value}
+                    style={style}></Input>
+
+                {isAutocompleteOpen && (
+                    <Autocomplete
+                        innerRef={(ref) => {
+                            // $FlowFixMe
+                            this.dropdownRef = ref;
+                        }}
+                        top={top}
+                        left={left}
+                        style={dropdownStyle}
+                        className={dropdownClassName}
+                        movePopupAsYouType={movePopupAsYouType}
+                        boundariesElement={boundariesElement}
+                        textareaRef={this.textareaRef}
+                        renderToBody={renderToBody}>
+                        {suggestionData && component && textToReplace && (
+                            <List
+                                getInfoBox={this.props.getInfoBox}
+                                onTextModify={this._handleTextModify}
+                                values={suggestionData}
+                                component={component}
+                                style={listStyle}
+                                className={listClassName}
+                                itemClassName={itemClassName}
+                                itemStyle={itemStyle}
+                                getTextToReplace={() => textToReplace}
+                                onSelect={this._onSelect}
+                                dropdownScroll={this._dropdownScroll}
+                            />
+                        )}
+                    </Autocomplete>
+                )}
+            </>
+        );
+    }
 }
 
 class Autocomplete extends React.Component<AutocompleteProps> {
-  containerElem: HTMLElement;
+    containerElem: HTMLElement;
 
-  ref: HTMLElement;
+    ref: HTMLElement;
 
-  componentDidMount() {
-    const { boundariesElement } = this.props;
+    componentDidMount() {
+        const { boundariesElement } = this.props;
 
-    if (typeof boundariesElement === "string") {
-      const elem = document.querySelector(boundariesElement);
-      if (!elem) {
-        throw new Error(
-          "RTA: Invalid prop boundariesElement: it has to be string or HTMLElement."
+        if (typeof boundariesElement === "string") {
+            const elem = document.querySelector(boundariesElement);
+            if (!elem) {
+                throw new Error(
+                    "RTA: Invalid prop boundariesElement: it has to be string or HTMLElement."
+                );
+            }
+            this.containerElem = elem;
+        } else if (boundariesElement instanceof HTMLElement) {
+            this.containerElem = boundariesElement;
+        } else {
+            throw new Error(
+                "RTA: Invalid prop boundariesElement: it has to be string or HTMLElement."
+            );
+        }
+
+        if (!this.containerElem || !this.containerElem.contains(this.ref)) {
+            if (process.env.NODE_ENV !== "test") {
+                throw new Error(
+                    "RTA: Invalid prop boundariesElement: it has to be one of the parents of the RTA."
+                );
+            }
+        }
+
+        this.ref.style.position = "absolute";
+    }
+
+    componentDidUpdate() {
+        const top = this.props.top || 0;
+        const left = this.props.left || 0;
+        const usedClasses = [];
+        const unusedClasses = [];
+
+        let topPosition = 0;
+        let leftPosition = 0;
+
+        const containerBounds = this.containerElem.getBoundingClientRect();
+        const dropdownBounds = this.ref.getBoundingClientRect();
+        const textareaBounds = this.props.textareaRef.getBoundingClientRect();
+        const computedStyle = window.getComputedStyle(this.ref);
+
+        const marginTop = parseInt(
+            computedStyle.getPropertyValue("margin-top"),
+            10
         );
-      }
-      this.containerElem = elem;
-    } else if (boundariesElement instanceof HTMLElement) {
-      this.containerElem = boundariesElement;
-    } else {
-      throw new Error(
-        "RTA: Invalid prop boundariesElement: it has to be string or HTMLElement."
-      );
-    }
-
-    if (!this.containerElem || !this.containerElem.contains(this.ref)) {
-      if (process.env.NODE_ENV !== "test") {
-        throw new Error(
-          "RTA: Invalid prop boundariesElement: it has to be one of the parents of the RTA."
+        const marginBottom = parseInt(
+            computedStyle.getPropertyValue("margin-bottom"),
+            10
         );
-      }
+        const marginLeft = parseInt(
+            computedStyle.getPropertyValue("margin-left"),
+            10
+        );
+        const marginRight = parseInt(
+            computedStyle.getPropertyValue("margin-right"),
+            10
+        );
+
+        const dropdownBottom =
+            marginTop +
+            marginBottom +
+            textareaBounds.top +
+            top +
+            dropdownBounds.height;
+        const dropdownRight =
+            marginLeft +
+            marginRight +
+            textareaBounds.left +
+            left +
+            dropdownBounds.width;
+
+        if (dropdownRight > containerBounds.right) {
+            leftPosition = left - dropdownBounds.width;
+            usedClasses.push(POSITION_CONFIGURATION.X.LEFT);
+            unusedClasses.push(POSITION_CONFIGURATION.X.RIGHT);
+        } else {
+            leftPosition = left;
+            usedClasses.push(POSITION_CONFIGURATION.X.RIGHT);
+            unusedClasses.push(POSITION_CONFIGURATION.X.LEFT);
+        }
+
+        if (dropdownBottom > containerBounds.bottom) {
+            topPosition = top - dropdownBounds.height;
+            usedClasses.push(POSITION_CONFIGURATION.Y.TOP);
+            unusedClasses.push(POSITION_CONFIGURATION.Y.BOTTOM);
+        } else {
+            topPosition = top;
+            topPosition += textareaBounds.height;
+            usedClasses.push(POSITION_CONFIGURATION.Y.BOTTOM);
+            unusedClasses.push(POSITION_CONFIGURATION.Y.TOP);
+        }
+
+        topPosition += textareaBounds.top - 10;
+        leftPosition += textareaBounds.left;
+        leftPosition = Math.min(
+            leftPosition,
+            textareaBounds.left + textareaBounds.width
+        );
+
+        this.ref.style.top = `${topPosition}px`;
+        this.ref.style.left = `${leftPosition}px`;
+
+        this.ref.classList.remove(...unusedClasses);
+        this.ref.classList.add(...usedClasses);
     }
 
-    this.ref.style.position = "absolute"
-  }
+    render() {
+        const {
+            style,
+            className,
+            innerRef,
+            children,
+            renderToBody,
+        } = this.props;
+        const body = document.body;
+        const autocompleteContainer = (
+            <div
+                ref={(ref) => {
+                    // $FlowFixMe
+                    this.ref = ref;
+                    // $FlowFixMe
+                    innerRef(ref);
+                }}
+                className={`rta__autocomplete ${className || ""}`}
+                style={style}>
+                {children}
+            </div>
+        );
 
-  componentDidUpdate() {
-    const top = this.props.top || 0;
-    const left = this.props.left || 0;
-    const usedClasses = [];
-    const unusedClasses = [];
-
-    let topPosition = 0;
-    let leftPosition = 0;
-
-    const containerBounds = this.containerElem.getBoundingClientRect();
-    const dropdownBounds = this.ref.getBoundingClientRect();
-    const textareaBounds = this.props.textareaRef.getBoundingClientRect();
-    const computedStyle = window.getComputedStyle(this.ref);
-
-    const marginTop = parseInt(
-      computedStyle.getPropertyValue("margin-top"),
-      10
-    );
-    const marginBottom = parseInt(
-      computedStyle.getPropertyValue("margin-bottom"),
-      10
-    );
-    const marginLeft = parseInt(
-      computedStyle.getPropertyValue("margin-left"),
-      10
-    );
-    const marginRight = parseInt(
-      computedStyle.getPropertyValue("margin-right"),
-      10
-    );
-
-    const dropdownBottom =
-      marginTop +
-      marginBottom +
-      textareaBounds.top +
-      top +
-      dropdownBounds.height;
-    const dropdownRight =
-      marginLeft +
-      marginRight +
-      textareaBounds.left +
-      left +
-      dropdownBounds.width;
-
-    if (dropdownRight > containerBounds.right) {
-      leftPosition = left - dropdownBounds.width;
-      usedClasses.push(POSITION_CONFIGURATION.X.LEFT);
-      unusedClasses.push(POSITION_CONFIGURATION.X.RIGHT);
-    } else {
-      leftPosition = left;
-      usedClasses.push(POSITION_CONFIGURATION.X.RIGHT);
-      unusedClasses.push(POSITION_CONFIGURATION.X.LEFT);
+        return renderToBody && body !== null
+            ? ReactDOM.createPortal(autocompleteContainer, body)
+            : autocompleteContainer;
     }
-
-    if (dropdownBottom > containerBounds.bottom) {
-      topPosition = top - dropdownBounds.height;
-      usedClasses.push(POSITION_CONFIGURATION.Y.TOP);
-      unusedClasses.push(POSITION_CONFIGURATION.Y.BOTTOM);
-    } else {
-      topPosition = top;
-      topPosition += textareaBounds.height
-      usedClasses.push(POSITION_CONFIGURATION.Y.BOTTOM);
-      unusedClasses.push(POSITION_CONFIGURATION.Y.TOP);
-    }
-
-
-      topPosition += textareaBounds.top - 10;
-      leftPosition += textareaBounds.left;
-      leftPosition = Math.min(leftPosition, textareaBounds.left + textareaBounds.width)
-    
-    
-    this.ref.style.top = `${topPosition}px`;
-    this.ref.style.left = `${leftPosition}px`;
-
-    this.ref.classList.remove(...unusedClasses);
-    this.ref.classList.add(...usedClasses);
-  }
-
-  render() {
-    const { style, className, innerRef, children, renderToBody } = this.props;
-    const body = document.body;
-    const autocompleteContainer = (
-      <div
-        ref={ref => {
-          // $FlowFixMe
-          this.ref = ref;
-          // $FlowFixMe
-          innerRef(ref);
-        }}
-        className={`rta__autocomplete ${className || ""}`}
-        style={style}
-      >
-        {children}
-      </div>
-    );
-
-    return renderToBody && body !== null
-      ? ReactDOM.createPortal(autocompleteContainer, body)
-      : autocompleteContainer;
-  }
 }
 
 class ReactTextareaAutocomplete extends React.Component<
-  TextareaProps,
-  TextareaState
-  > {
-  static defaultProps = {
-    movePopupAsYouType: false,
-    value: null,
-    minChar: 1,
-    boundariesElement: "body",
-    scrollToItem: true,
-    textAreaComponent: "textarea",
-    renderToBody: false
-  };
-
-  constructor(props: TextareaProps) {
-    super(props);
-
-    const { loadingComponent, trigger, value } = this.props;
-
-    if (value) this.state.value = value;
-
-    this._createRegExp();
-
-    if (!loadingComponent) {
-      throw new Error("RTA: loadingComponent is not defined");
-    }
-
-    if (!trigger) {
-      throw new Error("RTA: trigger is not defined");
-    }
-  }
-
-  state = {
-    top: null,
-    left: null,
-    currentTrigger: null,
-    actualToken: "",
-    data: null,
-    value: "",
-    dataLoading: false,
-    selectionEnd: 0,
-    component: null,
-    textToReplace: null
-  };
-
-  escListenerInit = () => {
-    if (!this.escListener) {
-      this.escListener = Listeners.add(KEY_CODES.ESC, this._closeAutocomplete);
-    }
-  };
-
-  escListenerDestroy = () => {
-    if (this.escListener) {
-      Listeners.remove(this.escListener);
-      this.escListener = null;
-    }
-  };
-
-  componentDidMount() {
-    Listeners.startListen(this.textareaRef);
-    // handle caret change
-    this.textareaRef &&
-      this.textareaRef.addEventListener("focus", this._handleCaretChange);
-    this.textareaRef &&
-      this.textareaRef.addEventListener("click", this._handleCaretChange);
-    this.textareaRef &&
-      this.textareaRef.addEventListener("keydown", this._handleCaretChange);
-  }
-
-  componentDidUpdate({ trigger: oldTrigger, value: oldValue }: TextareaProps) {
-    const { trigger, value } = this.props;
-    if (Object.keys(trigger).join("") !== Object.keys(oldTrigger).join("")) {
-      this._createRegExp();
-    }
-
-    if (oldValue !== value && this.lastValueBubbledEvent !== value) {
-      this.lastTrigger = 0;
-      this._changeHandler();
-    }
-  }
-
-  static getDerivedStateFromProps({ value }: TextareaProps) {
-    if (value === null || value === undefined) return null;
-
-    return {
-      value
+    TextareaProps,
+    TextareaState
+> {
+    static defaultProps = {
+        movePopupAsYouType: false,
+        value: null,
+        minChar: 1,
+        boundariesElement: "body",
+        scrollToItem: true,
+        textAreaComponent: "textarea",
+        renderToBody: false,
     };
-  }
 
-  componentWillUnmount() {
-    this.escListenerDestroy();
-    Listeners.stopListen(this.textareaRef);
-    // handle caret change
-    this.textareaRef &&
-      this.textareaRef.removeEventListener("focus", this._handleCaretChange);
-    this.textareaRef &&
-      this.textareaRef.removeEventListener("click", this._handleCaretChange);
-    this.textareaRef &&
-      this.textareaRef.removeEventListener("keydown", this._handleCaretChange);
-  }
+    constructor(props: TextareaProps) {
+        super(props);
 
-  getSelectionPosition = (): ?{|
-    selectionStart: number,
-      selectionEnd: number
-        |} => {
-  if (!this.textareaRef) return null;
+        const { loadingComponent, trigger, value } = this.props;
 
-  return {
-    selectionStart: this.textareaRef.selectionStart,
-    selectionEnd: this.textareaRef.selectionEnd
-  };
-};
+        if (value) this.state.value = value;
 
-getSelectedText = (): ?string => {
-  if (!this.textareaRef) return null;
-  const { selectionStart, selectionEnd } = this.textareaRef;
+        this._createRegExp();
 
-  if (selectionStart === selectionEnd) return null;
-
-  return this.state.value.substr(
-    selectionStart,
-    selectionEnd - selectionStart
-  );
-};
-
-setCaretPosition = (position: number = 0) => {
-  if (!this.textareaRef) return;
-
-  this.textareaRef.focus();
-  this.textareaRef.setSelectionRange(position, position);
-};
-
-getCaretPosition = (): number => {
-  if (!this.textareaRef) {
-    return 0;
-  }
-
-  const position = this.textareaRef.selectionEnd;
-  return position;
-};
-
-_handleCaretChange = (e: Event) => {
-  const cleanLastTrigger = () => {
-    const beforeHandle = this.getCaretPosition() - 1;
-
-    this.lastTrigger = this.lastTrigger ? beforeHandle : 0;
-  };
-
-  if (e.type === "keydown") {
-    // $FlowFixMe
-    const code = e.keyCode || e.which;
-    switch (code) {
-      case KEY_CODES.UP:
-      case KEY_CODES.DOWN:
-        if (!this._isAutocompleteOpen()) {
-          cleanLastTrigger();
+        if (!loadingComponent) {
+            throw new Error("RTA: loadingComponent is not defined");
         }
-        break;
-      case KEY_CODES.LEFT:
-      case KEY_CODES.RIGHT:
-        cleanLastTrigger();
-        break;
-      default:
+
+        if (!trigger) {
+            throw new Error("RTA: trigger is not defined");
+        }
     }
 
-    return;
-  }
+    state = {
+        top: null,
+        left: null,
+        currentTrigger: null,
+        actualToken: "",
+        data: null,
+        value: "",
+        dataLoading: false,
+        selectionEnd: 0,
+        component: null,
+        textToReplace: null,
+    };
 
-  cleanLastTrigger();
-};
+    escListenerInit = () => {
+        if (!this.escListener) {
+            this.escListener = Listeners.add(
+                KEY_CODES.ESC,
+                this._closeAutocomplete
+            );
+        }
+    };
 
-_onSelect = (item: Object | string) => {
-  const { selectionEnd, currentTrigger, value: textareaValue } = this.state;
-  const { trigger, onItemSelected } = this.props;
+    escListenerDestroy = () => {
+        if (this.escListener) {
+            Listeners.remove(this.escListener);
+            this.escListener = null;
+        }
+    };
 
-  if (!currentTrigger) return;
+    componentDidMount() {
+        Listeners.startListen(this.textareaRef);
+        // handle caret change
+        this.textareaRef &&
+            this.textareaRef.addEventListener("focus", this._handleCaretChange);
+        this.textareaRef &&
+            this.textareaRef.addEventListener("click", this._handleCaretChange);
+        this.textareaRef &&
+            this.textareaRef.addEventListener(
+                "keydown",
+                this._handleCaretChange
+            );
+    }
 
-  const getTextToReplaceForCurrentTrigger = this._getTextToReplace(
-    currentTrigger
-  );
-
-  if (!getTextToReplaceForCurrentTrigger) {
-    this._closeAutocomplete();
-    return;
-  }
-
-  const newToken = getTextToReplaceForCurrentTrigger(item);
-
-  if (!newToken) {
-    this._closeAutocomplete();
-    return;
-  }
-
-  if (onItemSelected) {
-    onItemSelected({
-      currentTrigger,
-      item
-    });
-  }
-
-  const computeCaretPosition = (
-    position: caretPositionType,
-    token: string,
-    startToken: number
-  ): number => {
-    switch (position) {
-      case "start":
-        return startToken;
-      case "next":
-      case "end":
-        return startToken + token.length;
-      default:
-        if (!Number.isInteger(position)) {
-          throw new Error(
-            'RTA: caretPosition should be "start", "next", "end" or number.'
-          );
+    componentDidUpdate({
+        trigger: oldTrigger,
+        value: oldValue,
+    }: TextareaProps) {
+        const { trigger, value } = this.props;
+        if (
+            Object.keys(trigger).join("") !== Object.keys(oldTrigger).join("")
+        ) {
+            this._createRegExp();
         }
 
+        if (oldValue !== value && this.lastValueBubbledEvent !== value) {
+            this.lastTrigger = 0;
+            this._changeHandler();
+        }
+    }
+
+    static getDerivedStateFromProps({ value }: TextareaProps) {
+        if (value === null || value === undefined) return null;
+
+        return {
+            value,
+        };
+    }
+
+    componentWillUnmount() {
+        this.escListenerDestroy();
+        Listeners.stopListen(this.textareaRef);
+        // handle caret change
+        this.textareaRef &&
+            this.textareaRef.removeEventListener(
+                "focus",
+                this._handleCaretChange
+            );
+        this.textareaRef &&
+            this.textareaRef.removeEventListener(
+                "click",
+                this._handleCaretChange
+            );
+        this.textareaRef &&
+            this.textareaRef.removeEventListener(
+                "keydown",
+                this._handleCaretChange
+            );
+    }
+
+    getSelectionPosition = (): ?{|
+        selectionStart: number,
+        selectionEnd: number,
+    |} => {
+        if (!this.textareaRef) return null;
+
+        return {
+            selectionStart: this.textareaRef.selectionStart,
+            selectionEnd: this.textareaRef.selectionEnd,
+        };
+    };
+
+    getSelectedText = (): ?string => {
+        if (!this.textareaRef) return null;
+        const { selectionStart, selectionEnd } = this.textareaRef;
+
+        if (selectionStart === selectionEnd) return null;
+
+        return this.state.value.substr(
+            selectionStart,
+            selectionEnd - selectionStart
+        );
+    };
+
+    setCaretPosition = (position: number = 0) => {
+        if (!this.textareaRef) return;
+
+        this.textareaRef.focus();
+        this.textareaRef.setSelectionRange(position, position);
+    };
+
+    getCaretPosition = (): number => {
+        if (!this.textareaRef) {
+            return 0;
+        }
+
+        const position = this.textareaRef.selectionEnd;
         return position;
-    }
-  };
+    };
 
-  const textToModify = textareaValue.slice(0, selectionEnd);
+    _handleCaretChange = (e: Event) => {
+        const cleanLastTrigger = () => {
+            const beforeHandle = this.getCaretPosition() - 1;
 
-  const startOfTokenPosition = textToModify.search(
-    /**
-     * It's important to escape the currentTrigger char for chars like [, (,...
-     */
-    new RegExp(
-      `${escapeRegex(currentTrigger)}${`[^${escapeRegex(currentTrigger)}${
-      trigger[currentTrigger].allowWhitespace ? "" : "\\s"
-      }]`}*$`
-    )
-  );
+            this.lastTrigger = this.lastTrigger ? beforeHandle : 0;
+        };
 
-  // we add space after emoji is selected if a caret position is next
-  const newTokenString =
-    newToken.caretPosition === "next" ? `${newToken.text} ` : newToken.text;
+        if (e.type === "keydown") {
+            // $FlowFixMe
+            const code = e.keyCode || e.which;
+            switch (code) {
+                case KEY_CODES.UP:
+                case KEY_CODES.DOWN:
+                    if (!this._isAutocompleteOpen()) {
+                        cleanLastTrigger();
+                    }
+                    break;
+                case KEY_CODES.LEFT:
+                case KEY_CODES.RIGHT:
+                    cleanLastTrigger();
+                    break;
+                default:
+            }
 
-  const newCaretPosition = computeCaretPosition(
-    newToken.caretPosition,
-    newTokenString,
-    startOfTokenPosition
-  );
+            return;
+        }
 
-  const modifiedText =
-    textToModify.substring(0, startOfTokenPosition) + newTokenString;
+        cleanLastTrigger();
+    };
 
-  const newValue = textareaValue.replace(textToModify, modifiedText);
-  // set the new textarea value and after that set the caret back to its position
-  this.setState(
-    {
-      value: newValue,
-      dataLoading: false
-    },
-    () => {
-      const insertedTrigger = this.tokenRegExpEnding.exec(newTokenString);
-      const insertedTriggerModifier = insertedTrigger
-        ? insertedTrigger[0].length
-        : 1;
+    _onSelect = (item: Object | string) => {
+        const {
+            selectionEnd,
+            currentTrigger,
+            value: textareaValue,
+        } = this.state;
+        const { trigger, onItemSelected } = this.props;
 
-      this.lastTrigger = newCaretPosition
-        ? newCaretPosition - insertedTriggerModifier
-        : newCaretPosition;
-      this.textareaRef.value = newValue;
-      this.textareaRef.selectionEnd = newCaretPosition;
-      this._changeHandler();
+        if (!currentTrigger) return;
 
-      const scrollTop = this.textareaRef.scrollTop;
-      this.setCaretPosition(newCaretPosition);
+        const getTextToReplaceForCurrentTrigger = this._getTextToReplace(
+            currentTrigger
+        );
 
-      /*
+        if (!getTextToReplaceForCurrentTrigger) {
+            this._closeAutocomplete();
+            return;
+        }
+
+        const newToken = getTextToReplaceForCurrentTrigger(item);
+
+        if (!newToken) {
+            this._closeAutocomplete();
+            return;
+        }
+
+        if (onItemSelected) {
+            onItemSelected({
+                currentTrigger,
+                item,
+            });
+        }
+
+        const computeCaretPosition = (
+            position: caretPositionType,
+            token: string,
+            startToken: number
+        ): number => {
+            switch (position) {
+                case "start":
+                    return startToken;
+                case "next":
+                case "end":
+                    return startToken + token.length;
+                default:
+                    if (!Number.isInteger(position)) {
+                        throw new Error(
+                            'RTA: caretPosition should be "start", "next", "end" or number.'
+                        );
+                    }
+
+                    return position;
+            }
+        };
+
+        const textToModify = textareaValue.slice(0, selectionEnd);
+
+        const startOfTokenPosition = textToModify.search(
+            /**
+             * It's important to escape the currentTrigger char for chars like [, (,...
+             */
+            new RegExp(
+                `${escapeRegex(currentTrigger)}${`[^${escapeRegex(
+                    currentTrigger
+                )}${trigger[currentTrigger].allowWhitespace ? "" : "\\s"}]`}*$`
+            )
+        );
+
+        // we add space after emoji is selected if a caret position is next
+        const newTokenString =
+            newToken.caretPosition === "next"
+                ? `${newToken.text} `
+                : newToken.text;
+
+        const newCaretPosition = computeCaretPosition(
+            newToken.caretPosition,
+            newTokenString,
+            startOfTokenPosition
+        );
+
+        const modifiedText =
+            textToModify.substring(0, startOfTokenPosition) + newTokenString;
+
+        const newValue = textareaValue.replace(textToModify, modifiedText);
+        // set the new textarea value and after that set the caret back to its position
+        this.setState(
+            {
+                value: newValue,
+                dataLoading: false,
+            },
+            () => {
+                const insertedTrigger = this.tokenRegExpEnding.exec(
+                    newTokenString
+                );
+                const insertedTriggerModifier = insertedTrigger
+                    ? insertedTrigger[0].length
+                    : 1;
+
+                this.lastTrigger = newCaretPosition
+                    ? newCaretPosition - insertedTriggerModifier
+                    : newCaretPosition;
+                this.textareaRef.value = newValue;
+                this.textareaRef.selectionEnd = newCaretPosition;
+                this._changeHandler();
+
+                const scrollTop = this.textareaRef.scrollTop;
+                this.setCaretPosition(newCaretPosition);
+
+                /*
         Chrome does not maintain scroll position
         Relevant discussion https://github.com/webscopeio/react-textarea-autocomplete/pull/97
       */
-      if (window.chrome) {
-        this.textareaRef.scrollTop = scrollTop;
-      }
-    }
-  );
-};
-
-_getTextToReplace = (currentTrigger: string): ?outputType => {
-  const triggerSettings = this.props.trigger[currentTrigger];
-
-  if (!currentTrigger || !triggerSettings) return null;
-
-  const { output } = triggerSettings;
-
-  return (item: Object | string) => {
-    if (
-      typeof item === "object" &&
-      (!output || typeof output !== "function")
-    ) {
-      throw new Error(
-        'Output functor is not defined! If you are using items as object you have to define "output" function. https://github.com/webscopeio/react-textarea-autocomplete#trigger-type'
-      );
-    }
-
-    if (output) {
-      const textToReplace = output(item, currentTrigger);
-
-      if (textToReplace === undefined || typeof textToReplace === "number") {
-        throw new Error(
-          `Output functor should return string or object in shape {text: string, caretPosition: string | number}.\nGot "${String(
-            textToReplace
-          )}". Check the implementation for trigger "${currentTrigger}"\n\nSee https://github.com/webscopeio/react-textarea-autocomplete#trigger-type for more information.\n`
+                if (window.chrome) {
+                    this.textareaRef.scrollTop = scrollTop;
+                }
+            }
         );
-      }
-
-      if (textToReplace === null) return null;
-
-      if (typeof textToReplace === "string") {
-        return {
-          text: textToReplace,
-          caretPosition: DEFAULT_CARET_POSITION
-        };
-      }
-
-      if (!textToReplace.text) {
-        throw new Error(
-          `Output "text" is not defined! Object should has shape {text: string, caretPosition: string | number}. Check the implementation for trigger "${currentTrigger}"\n`
-        );
-      }
-
-      if (!textToReplace.caretPosition) {
-        throw new Error(
-          `Output "caretPosition" is not defined! Object should has shape {text: string, caretPosition: string | number}. Check the implementation for trigger "${currentTrigger}"\n`
-        );
-      }
-
-      return textToReplace;
-    }
-
-    if (typeof item !== "string") {
-      throw new Error("Output item should be string\n");
-    }
-
-    return {
-      text: `${currentTrigger}${item}${currentTrigger}`,
-      caretPosition: DEFAULT_CARET_POSITION
     };
-  };
-};
 
-_getCurrentTriggerSettings = (): ?settingType => {
-  const { currentTrigger } = this.state;
+    _getTextToReplace = (currentTrigger: string): ?outputType => {
+        const triggerSettings = this.props.trigger[currentTrigger];
 
-  if (!currentTrigger) return null;
+        if (!currentTrigger || !triggerSettings) return null;
 
-  return this.props.trigger[currentTrigger];
-};
+        const { output } = triggerSettings;
 
-_getValuesFromProvider = () => {
-  const { currentTrigger, actualToken } = this.state;
-  const triggerSettings = this._getCurrentTriggerSettings();
+        return (item: Object | string) => {
+            if (
+                typeof item === "object" &&
+                (!output || typeof output !== "function")
+            ) {
+                throw new Error(
+                    'Output functor is not defined! If you are using items as object you have to define "output" function. https://github.com/webscopeio/react-textarea-autocomplete#trigger-type'
+                );
+            }
 
+            if (output) {
+                const textToReplace = output(item, currentTrigger);
 
+                if (
+                    textToReplace === undefined ||
+                    typeof textToReplace === "number"
+                ) {
+                    throw new Error(
+                        `Output functor should return string or object in shape {text: string, caretPosition: string | number}.\nGot "${String(
+                            textToReplace
+                        )}". Check the implementation for trigger "${currentTrigger}"\n\nSee https://github.com/webscopeio/react-textarea-autocomplete#trigger-type for more information.\n`
+                    );
+                }
 
-  if (!currentTrigger || !triggerSettings) {
-    return;
-  }
+                if (textToReplace === null) return null;
 
-  const { dataProvider, component } = triggerSettings;
+                if (typeof textToReplace === "string") {
+                    return {
+                        text: textToReplace,
+                        caretPosition: DEFAULT_CARET_POSITION,
+                    };
+                }
 
-  if (typeof dataProvider !== "function") {
-    throw new Error("Trigger provider has to be a function!");
-  }
+                if (!textToReplace.text) {
+                    throw new Error(
+                        `Output "text" is not defined! Object should has shape {text: string, caretPosition: string | number}. Check the implementation for trigger "${currentTrigger}"\n`
+                    );
+                }
 
-  this.setState({
-    dataLoading: true
-  });
+                if (!textToReplace.caretPosition) {
+                    throw new Error(
+                        `Output "caretPosition" is not defined! Object should has shape {text: string, caretPosition: string | number}. Check the implementation for trigger "${currentTrigger}"\n`
+                    );
+                }
 
-  let providedData = dataProvider(actualToken);
+                return textToReplace;
+            }
 
-  if (!(providedData instanceof Promise)) {
-    providedData = Promise.resolve(providedData);
-  }
+            if (typeof item !== "string") {
+                throw new Error("Output item should be string\n");
+            }
 
+            return {
+                text: `${currentTrigger}${item}${currentTrigger}`,
+                caretPosition: DEFAULT_CARET_POSITION,
+            };
+        };
+    };
 
+    _getCurrentTriggerSettings = (): ?settingType => {
+        const { currentTrigger } = this.state;
 
-  providedData
-    .then(data => {
-      if (!Array.isArray(data)) {
-        throw new Error("Trigger provider has to provide an array!");
-      }
+        if (!currentTrigger) return null;
 
-      if (typeof component !== "function") {
-        throw new Error("Component should be defined!");
-      }
+        return this.props.trigger[currentTrigger];
+    };
 
-      // throw away if we resolved old trigger
-      if (currentTrigger !== this.state.currentTrigger) return;
+    _getValuesFromProvider = () => {
+        const { currentTrigger, actualToken } = this.state;
+        const triggerSettings = this._getCurrentTriggerSettings();
 
-      // if we haven't resolved any data let's close the autocomplete
-      if (!data.length) {
-        this._closeAutocomplete();
-        return;
-      }
-
-      this.setState({
-        dataLoading: false,
-        data,
-        component
-      });
-    })
-    .catch(e => errorMessage(e.message));
-};
-
-_getSuggestions = (): ?Array<Object | string> => {
-  const { currentTrigger, data } = this.state;
-
-  if (!currentTrigger || !data || (data && !data.length)) return null;
-
-  return data;
-};
-
-_createRegExp = () => {
-  const { trigger } = this.props;
-
-  // negative lookahead to match only the trigger + the actual token = "bladhwd:adawd:word test" => ":word"
-  // https://stackoverflow.com/a/8057827/2719917
-  this.tokenRegExp = new RegExp(
-    `(${Object.keys(trigger)
-      // the sort is important for multi-char combos as "/kick", "/"
-      .sort((a, b) => {
-        if (a < b) {
-          return 1;
+        if (!currentTrigger || !triggerSettings) {
+            return;
         }
-        if (a > b) {
-          return -1;
+
+        const { dataProvider, component } = triggerSettings;
+
+        if (typeof dataProvider !== "function") {
+            throw new Error("Trigger provider has to be a function!");
         }
-        return 0;
-      })
-      .map(a => escapeRegex(a))
-      .join("|")})((?:(?!\\1)[^\\s])*$)`
-  );
 
-  this.tokenRegExpEnding = new RegExp(
-    `(${Object.keys(trigger)
-      // the sort is important for multi-char combos as "/kick", "/"
-      .sort((a, b) => {
-        if (a < b) {
-          return 1;
+        this.setState({
+            dataLoading: true,
+        });
+
+        let providedData = dataProvider(actualToken);
+
+        if (!(providedData instanceof Promise)) {
+            providedData = Promise.resolve(providedData);
         }
-        if (a > b) {
-          return -1;
+
+        providedData
+            .then((data) => {
+                if (!Array.isArray(data)) {
+                    throw new Error(
+                        "Trigger provider has to provide an array!"
+                    );
+                }
+
+                if (typeof component !== "function") {
+                    throw new Error("Component should be defined!");
+                }
+
+                // throw away if we resolved old trigger
+                if (currentTrigger !== this.state.currentTrigger) return;
+
+                // if we haven't resolved any data let's close the autocomplete
+                if (!data.length) {
+                    this._closeAutocomplete();
+                    return;
+                }
+
+                this.setState({
+                    dataLoading: false,
+                    data,
+                    component,
+                });
+            })
+            .catch((e) => errorMessage(e.message));
+    };
+
+    _getSuggestions = (): ?Array<Object | string> => {
+        const { currentTrigger, data } = this.state;
+
+        if (!currentTrigger || !data || (data && !data.length)) return null;
+
+        return data;
+    };
+
+    _createRegExp = () => {
+        const { trigger } = this.props;
+
+        // negative lookahead to match only the trigger + the actual token = "bladhwd:adawd:word test" => ":word"
+        // https://stackoverflow.com/a/8057827/2719917
+        this.tokenRegExp = new RegExp(
+            `(${Object.keys(trigger)
+                // the sort is important for multi-char combos as "/kick", "/"
+                .sort((a, b) => {
+                    if (a < b) {
+                        return 1;
+                    }
+                    if (a > b) {
+                        return -1;
+                    }
+                    return 0;
+                })
+                .map((a) => escapeRegex(a))
+                .join("|")})((?:(?!\\1)[^\\s])*$)`
+        );
+
+        this.tokenRegExpEnding = new RegExp(
+            `(${Object.keys(trigger)
+                // the sort is important for multi-char combos as "/kick", "/"
+                .sort((a, b) => {
+                    if (a < b) {
+                        return 1;
+                    }
+                    if (a > b) {
+                        return -1;
+                    }
+                    return 0;
+                })
+                .map((a) => escapeRegex(a))
+                .join("|")})$`
+        );
+    };
+
+    /**
+     * Close autocomplete, also clean up trigger (to avoid slow promises)
+     */
+    _closeAutocomplete = () => {
+        this.escListenerDestroy();
+        this.setState({
+            data: null,
+            dataLoading: false,
+            currentTrigger: null,
+        });
+    };
+
+    _cleanUpProps = (): Object => {
+        const props = { ...this.props };
+        const notSafe = [
+            "loadingComponent",
+            "boundariesElement",
+            "containerStyle",
+            "minChar",
+            "scrollToItem",
+            "ref",
+            "innerRef",
+            "onChange",
+            "onCaretPositionChange",
+            "className",
+            "value",
+            "trigger",
+            "listStyle",
+            "itemStyle",
+            "containerStyle",
+            "loaderStyle",
+            "className",
+            "containerClassName",
+            "listClassName",
+            "itemClassName",
+            "loaderClassName",
+            "dropdownStyle",
+            "dropdownClassName",
+            "movePopupAsYouType",
+            "textAreaComponent",
+            "renderToBody",
+            "onItemSelected",
+        ];
+
+        // eslint-disable-next-line
+        for (const prop in props) {
+            if (notSafe.includes(prop)) delete props[prop];
         }
-        return 0;
-      })
-      .map(a => escapeRegex(a))
-      .join("|")})$`
-  );
-};
 
-/**
- * Close autocomplete, also clean up trigger (to avoid slow promises)
- */
-_closeAutocomplete = () => {
-  this.escListenerDestroy();
-  this.setState({
-    data: null,
-    dataLoading: false,
-    currentTrigger: null
-  });
-};
+        return props;
+    };
 
-_cleanUpProps = (): Object => {
-  const props = { ...this.props };
-  const notSafe = [
-    "loadingComponent",
-    "boundariesElement",
-    "containerStyle",
-    "minChar",
-    "scrollToItem",
-    "ref",
-    "innerRef",
-    "onChange",
-    "onCaretPositionChange",
-    "className",
-    "value",
-    "trigger",
-    "listStyle",
-    "itemStyle",
-    "containerStyle",
-    "loaderStyle",
-    "className",
-    "containerClassName",
-    "listClassName",
-    "itemClassName",
-    "loaderClassName",
-    "dropdownStyle",
-    "dropdownClassName",
-    "movePopupAsYouType",
-    "textAreaComponent",
-    "renderToBody",
-    "onItemSelected"
-  ];
+    _changeHandler = (e?: SyntheticInputEvent<*>) => {
+        const {
+            trigger,
+            onChange,
+            minChar,
+            onCaretPositionChange,
+            movePopupAsYouType,
+        } = this.props;
+        const { top, left } = this.state;
 
-  // eslint-disable-next-line
-  for (const prop in props) {
-    if (notSafe.includes(prop)) delete props[prop];
-  }
+        let event = e;
+        if (!event) {
+            // fire onChange event after successful selection
+            event = new CustomEvent("change", { bubbles: true });
+            this.textareaRef.dispatchEvent(event);
+        }
 
-  return props;
-};
+        const textarea = event.target;
+        const { selectionEnd } = textarea;
+        let value = textarea.value;
+        this.lastValueBubbledEvent = value;
 
-_changeHandler = (e?: SyntheticInputEvent<*>) => {
-  const {
-    trigger,
-    onChange,
-    minChar,
-    onCaretPositionChange,
-    movePopupAsYouType
-  } = this.props;
-  const { top, left } = this.state;
+        if (onChange && event) {
+            event.persist && event.persist();
+            onChange(event);
+        }
 
-  let event = e;
-  if (!event) {
-    // fire onChange event after successful selection
-    event = new CustomEvent("change", { bubbles: true });
-    this.textareaRef.dispatchEvent(event);
-  }
+        if (onCaretPositionChange) {
+            const caretPosition = this.getCaretPosition();
+            onCaretPositionChange(caretPosition);
+        }
 
-  const textarea = event.target;
-  const { selectionEnd } = textarea;
-  let value = textarea.value;
-  this.lastValueBubbledEvent = value;
+        this.setState({
+            value,
+        });
 
-  if (onChange && event) {
-    event.persist && event.persist();
-    onChange(event);
-  }
+        const setTopLeft = () => {
+            const { top: newTop, left: newLeft } = getCaretCoordinates(
+                textarea,
+                selectionEnd
+            );
 
-  if (onCaretPositionChange) {
-    const caretPosition = this.getCaretPosition();
-    onCaretPositionChange(caretPosition);
-  }
+            this.setState({
+                // make position relative to textarea
+                top: newTop - this.textareaRef.scrollTop || 0,
+                left: newLeft,
+            });
+        };
 
-  this.setState({
-    value
-  });
+        const cleanLastTrigger = (triggerLength) => {
+            this.lastTrigger = selectionEnd - triggerLength;
 
+            this._closeAutocomplete();
+            setTopLeft();
+        };
 
-  const setTopLeft = () => {
-    const { top: newTop, left: newLeft } = getCaretCoordinates(
-      textarea,
-      selectionEnd
-    );
+        if (selectionEnd <= this.lastTrigger) {
+            let affectedTextareaValue = value.slice(0, selectionEnd);
+            const newTrigger = this.tokenRegExp.exec(affectedTextareaValue);
 
-    this.setState({
-      // make position relative to textarea
-      top: newTop - this.textareaRef.scrollTop || 0,
-      left: newLeft
-    });
-  };
+            cleanLastTrigger(newTrigger ? newTrigger[0].length : 0);
+        }
 
-  const cleanLastTrigger = triggerLength => {
-    this.lastTrigger = selectionEnd - triggerLength;
+        let affectedTextareaValue = value.slice(this.lastTrigger, selectionEnd);
 
-    this._closeAutocomplete();
-    setTopLeft();
-  };
+        let tokenMatch = this.tokenRegExp.exec(affectedTextareaValue);
+        let lastToken = tokenMatch && tokenMatch[0];
 
-  if (selectionEnd <= this.lastTrigger) {
-    let affectedTextareaValue = value.slice(0, selectionEnd);
-    const newTrigger = this.tokenRegExp.exec(affectedTextareaValue);
+        let currentTrigger = (tokenMatch && tokenMatch[1]) || null;
+        const currentTriggerLength = currentTrigger
+            ? currentTrigger.length - 1
+            : 0;
 
+        // with this approach we want to know if the user just inserted a new trigger sequence
+        const newTrigger = this.tokenRegExpEnding.exec(affectedTextareaValue);
 
-    cleanLastTrigger(newTrigger ? newTrigger[0].length : 0);
-  }
+        if (newTrigger) {
+            cleanLastTrigger(newTrigger[0].length);
+        } else if (!this._isAutocompleteOpen()) {
+            this._closeAutocomplete();
+        }
 
-  let affectedTextareaValue = value.slice(this.lastTrigger, selectionEnd);
-
-  let tokenMatch = this.tokenRegExp.exec(affectedTextareaValue);
-  let lastToken = tokenMatch && tokenMatch[0];
-
-  let currentTrigger = (tokenMatch && tokenMatch[1]) || null;
-  const currentTriggerLength = currentTrigger ? currentTrigger.length - 1 : 0;
-
-  // with this approach we want to know if the user just inserted a new trigger sequence
-  const newTrigger = this.tokenRegExpEnding.exec(affectedTextareaValue);
-
-  if (newTrigger) {
-    cleanLastTrigger(newTrigger[0].length);
-  } else if (!this._isAutocompleteOpen()) {
-    this._closeAutocomplete();
-  }
-
-
-  /*
+        /*
    if we lost the trigger token or there is no following character we want to close
    the autocomplete
   */
-  if (
-    (!lastToken || lastToken.length <= minChar + currentTriggerLength) &&
-    // check if our current trigger disallows whitespace
-    ((this.state.currentTrigger &&
-      !trigger[this.state.currentTrigger].allowWhitespace) ||
-      !this.state.currentTrigger)
-  ) {
-    this._closeAutocomplete();
-    return;
-  }
+        if (
+            (!lastToken ||
+                lastToken.length <= minChar + currentTriggerLength) &&
+            // check if our current trigger disallows whitespace
+            ((this.state.currentTrigger &&
+                !trigger[this.state.currentTrigger].allowWhitespace) ||
+                !this.state.currentTrigger)
+        ) {
+            this._closeAutocomplete();
+            return;
+        }
 
-  /**
-   * This code has to be sync that is the reason why we obtain the currentTrigger
-   * from currentTrigger not this.state.currentTrigger
-   *
-   * Check if the currently typed token has to be afterWhitespace, or not.
-   *
-   * This setting means that there has to be whitespace before the token (on it has to be the the first character typed into textarea)
-   */
+        /**
+         * This code has to be sync that is the reason why we obtain the currentTrigger
+         * from currentTrigger not this.state.currentTrigger
+         *
+         * Check if the currently typed token has to be afterWhitespace, or not.
+         *
+         * This setting means that there has to be whitespace before the token (on it has to be the the first character typed into textarea)
+         */
 
-  if (
-    currentTrigger &&
-    trigger[currentTrigger].afterWhitespace &&
-    !/\s/.test(value[selectionEnd - lastToken.length - 1]) &&
-    value[selectionEnd - lastToken.length - 1] !== undefined
-  ) {
-    this._closeAutocomplete();
-    return;
-  }
+        if (
+            currentTrigger &&
+            trigger[currentTrigger].afterWhitespace &&
+            !/\s/.test(value[selectionEnd - lastToken.length - 1]) &&
+            value[selectionEnd - lastToken.length - 1] !== undefined
+        ) {
+            this._closeAutocomplete();
+            return;
+        }
 
-  /**
+        /**
     If our current trigger allows whitespace
     get the correct token for DataProvider, so we need to construct new RegExp
    */
-  if (
-    this.state.currentTrigger &&
-    trigger[this.state.currentTrigger].allowWhitespace
-  ) {
-    tokenMatch = new RegExp(`${escapeRegex(this.state.currentTrigger)}.*$`).exec(
-      value.slice(0, selectionEnd)
-    );
-    lastToken = tokenMatch && tokenMatch[0];
+        if (
+            this.state.currentTrigger &&
+            trigger[this.state.currentTrigger].allowWhitespace
+        ) {
+            tokenMatch = new RegExp(
+                `${escapeRegex(this.state.currentTrigger)}.*$`
+            ).exec(value.slice(0, selectionEnd));
+            lastToken = tokenMatch && tokenMatch[0];
 
-    if (!lastToken) {
-      this._closeAutocomplete();
-      return;
-    }
+            if (!lastToken) {
+                this._closeAutocomplete();
+                return;
+            }
 
-    currentTrigger =
-      Object.keys(trigger).find(a => a === lastToken[0]) || null;
-  }
-
-
-
-  const actualToken = lastToken.slice(1);
-
-  // if trigger is not configured step out from the function, otherwise proceed
-  if (!currentTrigger) {
-    return;
-  }
-
-
-
-  if (
-    movePopupAsYouType ||
-    (top === null && left === null) ||
-    // if the trigger got changed, let's reposition the autocomplete
-    this.state.currentTrigger !== currentTrigger
-  ) {
-    setTopLeft();
-  }
-
-  this.escListenerInit();
-
-  const textToReplace = this._getTextToReplace(currentTrigger);
-
-  this.setState(
-    {
-      selectionEnd,
-      currentTrigger,
-      textToReplace,
-      actualToken
-    },
-    () => {
-      try {
-        this._getValuesFromProvider();
-      } catch (err) {
-        errorMessage(err.message);
-      }
-    }
-  );
-};
-
-_selectHandler = (e: SyntheticInputEvent<*>) => {
-  const { onCaretPositionChange, onSelect } = this.props;
-
-  if (onCaretPositionChange) {
-    const caretPosition = this.getCaretPosition();
-    onCaretPositionChange(caretPosition);
-  }
-
-  if (onSelect) {
-    e.persist();
-    onSelect(e);
-  }
-};
-
-_shouldStayOpen = (e: SyntheticFocusEvent<*>) => {
-  let el = e.relatedTarget;
-  // IE11 doesn't know about `relatedTarget` // https://stackoverflow.com/a/49325196/2719917
-  if (el === null) {
-    el = document.activeElement;
-  }
-
-  if (
-    this.dropdownRef &&
-    el instanceof Node &&
-    this.dropdownRef.contains(el)
-  ) {
-    return true;
-  }
-
-  return false;
-};
-
-_onClick = (e: SyntheticFocusEvent<*>) => {
-  const { onClick } = this.props;
-
-  if (onClick) {
-    e.persist();
-    onClick(e);
-  }
-
-  if (this._shouldStayOpen(e)) {
-    return;
-  }
-
-  this._closeAutocomplete();
-};
-
-_onBlur = (e: SyntheticFocusEvent<*>) => {
-  const { onBlur } = this.props;
-
-  if (onBlur) {
-    e.persist();
-    onBlur(e);
-  }
-
-  if (this._shouldStayOpen(e)) {
-    return;
-  }
-  this._closeAutocomplete();
-};
-
-_onScrollHandler = () => {
-  this._closeAutocomplete();
-};
-
-_dropdownScroll = (item: HTMLDivElement) => {
-  const { scrollToItem } = this.props;
-
-  if (!scrollToItem) return;
-
-  if (scrollToItem === true) {
-    defaultScrollToItem(this.dropdownRef, item);
-    return;
-  }
-
-  if (typeof scrollToItem !== "function" || scrollToItem.length !== 2) {
-    throw new Error(
-      "`scrollToItem` has to be boolean (true for default implementation) or function with two parameters: container, item."
-    );
-  }
-
-  scrollToItem(this.dropdownRef, item);
-};
-
-_isAutocompleteOpen = () => {
-  const { dataLoading, currentTrigger } = this.state;
-  const suggestionData = this._getSuggestions();
-
-  return !!((dataLoading || suggestionData) && currentTrigger);
-};
-
-_textareaRef = (ref: HTMLInputElement) => {
-  // $FlowFixMe - ref is actually a `?HTMLTextAreaElement`
-  this.props.innerRef && this.props.innerRef(ref);
-  this.textareaRef = ref;
-};
-
-props: TextareaProps;
-
-textareaRef: HTMLInputElement;
-
-dropdownRef: HTMLDivElement;
-
-tokenRegExp: RegExp;
-
-lastValueBubbledEvent: string;
-
-tokenRegExpEnding: RegExp;
-
-// Last trigger index, to know when user selected the item and we should stop showing the autocomplete
-lastTrigger: number = 0;
-
-escListener: ? number = null;
-
-render() {
-  const {
-    loadingComponent: Loader,
-    style,
-    className,
-    listStyle,
-    itemStyle,
-    boundariesElement,
-    movePopupAsYouType,
-    listClassName,
-    itemClassName,
-    dropdownClassName,
-    dropdownStyle,
-    containerStyle,
-    containerClassName,
-    loaderStyle,
-    loaderClassName,
-    textAreaComponent,
-    renderToBody
-  } = this.props;
-  const {
-    left,
-    top,
-    dataLoading,
-    component,
-    value,
-    textToReplace
-  } = this.state;
-
-  const isAutocompleteOpen = this._isAutocompleteOpen();
-  const suggestionData = this._getSuggestions();
-  const extraAttrs = {};
-  let TextAreaComponent;
-  if (textAreaComponent.component) {
-    TextAreaComponent = textAreaComponent.component;
-    extraAttrs[textAreaComponent.ref] = this._textareaRef;
-  } else {
-    TextAreaComponent = textAreaComponent;
-    extraAttrs.ref = this._textareaRef;
-  }
-
-  return (
-    <div
-      className={`rta ${
-        dataLoading === true ? "rta--loading" : ""
-        } ${containerClassName || ""}`}
-      style={containerStyle}
-    >
-      <TextAreaComponent
-        {...this._cleanUpProps()}
-        className={`rta__textarea ${className || ""}`}
-        onChange={this._changeHandler}
-        onSelect={this._selectHandler}
-        onScroll={this._onScrollHandler}
-        onClick={
-          // The textarea itself is outside the autoselect dropdown.
-          this._onClick
+            currentTrigger =
+                Object.keys(trigger).find((a) => a === lastToken[0]) || null;
         }
-        onBlur={this._onBlur}
-        value={value}
-        style={style}
-        {...extraAttrs}
-      />
-      {isAutocompleteOpen && (
-        <Autocomplete
-          innerRef={ref => {
-            // $FlowFixMe
-            this.dropdownRef = ref;
-          }}
-          top={top}
-          left={left}
-          style={dropdownStyle}
-          className={dropdownClassName}
-          movePopupAsYouType={movePopupAsYouType}
-          boundariesElement={boundariesElement}
-          textareaRef={this.textareaRef}
-          renderToBody={renderToBody}
-        >
-          {suggestionData && component && textToReplace && (
-            <List
-              values={suggestionData}
-              component={component}
-              style={listStyle}
-              className={listClassName}
-              itemClassName={itemClassName}
-              itemStyle={itemStyle}
-              getTextToReplace={textToReplace}
-              onSelect={this._onSelect}
-              dropdownScroll={this._dropdownScroll}
-            />
-          )}
-          {dataLoading && (
+
+        const actualToken = lastToken.slice(1);
+
+        // if trigger is not configured step out from the function, otherwise proceed
+        if (!currentTrigger) {
+            return;
+        }
+
+        if (
+            movePopupAsYouType ||
+            (top === null && left === null) ||
+            // if the trigger got changed, let's reposition the autocomplete
+            this.state.currentTrigger !== currentTrigger
+        ) {
+            setTopLeft();
+        }
+
+        this.escListenerInit();
+
+        const textToReplace = this._getTextToReplace(currentTrigger);
+
+        this.setState(
+            {
+                selectionEnd,
+                currentTrigger,
+                textToReplace,
+                actualToken,
+            },
+            () => {
+                try {
+                    this._getValuesFromProvider();
+                } catch (err) {
+                    errorMessage(err.message);
+                }
+            }
+        );
+    };
+
+    _selectHandler = (e: SyntheticInputEvent<*>) => {
+        const { onCaretPositionChange, onSelect } = this.props;
+
+        if (onCaretPositionChange) {
+            const caretPosition = this.getCaretPosition();
+            onCaretPositionChange(caretPosition);
+        }
+
+        if (onSelect) {
+            e.persist();
+            onSelect(e);
+        }
+    };
+
+    _shouldStayOpen = (e: SyntheticFocusEvent<*>) => {
+        let el = e.relatedTarget;
+        // IE11 doesn't know about `relatedTarget` // https://stackoverflow.com/a/49325196/2719917
+        if (el === null) {
+            el = document.activeElement;
+        }
+
+        if (
+            this.dropdownRef &&
+            el instanceof Node &&
+            this.dropdownRef.contains(el)
+        ) {
+            return true;
+        }
+
+        return false;
+    };
+
+    _onClick = (e: SyntheticFocusEvent<*>) => {
+        const { onClick } = this.props;
+
+        if (onClick) {
+            e.persist();
+            onClick(e);
+        }
+
+        if (this._shouldStayOpen(e)) {
+            return;
+        }
+
+        this._closeAutocomplete();
+    };
+
+    _onBlur = (e: SyntheticFocusEvent<*>) => {
+        const { onBlur } = this.props;
+
+        if (onBlur) {
+            e.persist();
+            onBlur(e);
+        }
+
+        if (this._shouldStayOpen(e)) {
+            return;
+        }
+        this._closeAutocomplete();
+    };
+
+    _onScrollHandler = () => {
+        this._closeAutocomplete();
+    };
+
+    _dropdownScroll = (item: HTMLDivElement) => {
+        const { scrollToItem } = this.props;
+
+        if (!scrollToItem) return;
+
+        if (scrollToItem === true) {
+            defaultScrollToItem(this.dropdownRef, item);
+            return;
+        }
+
+        if (typeof scrollToItem !== "function" || scrollToItem.length !== 2) {
+            throw new Error(
+                "`scrollToItem` has to be boolean (true for default implementation) or function with two parameters: container, item."
+            );
+        }
+
+        scrollToItem(this.dropdownRef, item);
+    };
+
+    _isAutocompleteOpen = () => {
+        const { dataLoading, currentTrigger } = this.state;
+        const suggestionData = this._getSuggestions();
+
+        return !!((dataLoading || suggestionData) && currentTrigger);
+    };
+
+    _textareaRef = (ref: HTMLInputElement) => {
+        // $FlowFixMe - ref is actually a `?HTMLTextAreaElement`
+        this.props.innerRef && this.props.innerRef(ref);
+        this.textareaRef = ref;
+    };
+
+    props: TextareaProps;
+
+    textareaRef: HTMLInputElement;
+
+    dropdownRef: HTMLDivElement;
+
+    tokenRegExp: RegExp;
+
+    lastValueBubbledEvent: string;
+
+    tokenRegExpEnding: RegExp;
+
+    // Last trigger index, to know when user selected the item and we should stop showing the autocomplete
+    lastTrigger: number = 0;
+
+    escListener: ?number = null;
+
+    render() {
+        const {
+            loadingComponent: Loader,
+            style,
+            className,
+            listStyle,
+            itemStyle,
+            boundariesElement,
+            movePopupAsYouType,
+            listClassName,
+            itemClassName,
+            dropdownClassName,
+            dropdownStyle,
+            containerStyle,
+            containerClassName,
+            loaderStyle,
+            loaderClassName,
+            textAreaComponent,
+            renderToBody,
+        } = this.props;
+        const {
+            left,
+            top,
+            dataLoading,
+            component,
+            value,
+            textToReplace,
+        } = this.state;
+
+        const isAutocompleteOpen = this._isAutocompleteOpen();
+        const suggestionData = this._getSuggestions();
+        const extraAttrs = {};
+        let TextAreaComponent;
+        if (textAreaComponent.component) {
+            TextAreaComponent = textAreaComponent.component;
+            extraAttrs[textAreaComponent.ref] = this._textareaRef;
+        } else {
+            TextAreaComponent = textAreaComponent;
+            extraAttrs.ref = this._textareaRef;
+        }
+
+        return (
             <div
-              className={`rta__loader ${
-                suggestionData !== null
-                  ? "rta__loader--suggestion-data"
-                  : "rta__loader--empty-suggestion-data"
-                } ${loaderClassName || ""}`}
-              style={loaderStyle}
-            >
-              <Loader data={suggestionData} />
+                className={`rta ${dataLoading === true ? "rta--loading" : ""} ${
+                    containerClassName || ""
+                }`}
+                style={containerStyle}>
+                <TextAreaComponent
+                    {...this._cleanUpProps()}
+                    className={`rta__textarea ${className || ""}`}
+                    onChange={this._changeHandler}
+                    onSelect={this._selectHandler}
+                    onScroll={this._onScrollHandler}
+                    onClick={
+                        // The textarea itself is outside the autoselect dropdown.
+                        this._onClick
+                    }
+                    onBlur={this._onBlur}
+                    value={value}
+                    style={style}
+                    {...extraAttrs}
+                />
+                {isAutocompleteOpen && (
+                    <Autocomplete
+                        innerRef={(ref) => {
+                            // $FlowFixMe
+                            this.dropdownRef = ref;
+                        }}
+                        top={top}
+                        left={left}
+                        style={dropdownStyle}
+                        className={dropdownClassName}
+                        movePopupAsYouType={movePopupAsYouType}
+                        boundariesElement={boundariesElement}
+                        textareaRef={this.textareaRef}
+                        renderToBody={renderToBody}>
+                        {suggestionData && component && textToReplace && (
+                            <List
+                                values={suggestionData}
+                                component={component}
+                                style={listStyle}
+                                className={listClassName}
+                                itemClassName={itemClassName}
+                                itemStyle={itemStyle}
+                                getTextToReplace={textToReplace}
+                                onSelect={this._onSelect}
+                                dropdownScroll={this._dropdownScroll}
+                            />
+                        )}
+                        {dataLoading && (
+                            <div
+                                className={`rta__loader ${
+                                    suggestionData !== null
+                                        ? "rta__loader--suggestion-data"
+                                        : "rta__loader--empty-suggestion-data"
+                                } ${loaderClassName || ""}`}
+                                style={loaderStyle}>
+                                <Loader data={suggestionData} />
+                            </div>
+                        )}
+                    </Autocomplete>
+                )}
             </div>
-          )}
-        </Autocomplete>
-      )}
-    </div>
-  );
-}
+        );
+    }
 }
 
 const containerPropCheck = ({ boundariesElement }) => {
-  if (!boundariesElement) return null;
+    if (!boundariesElement) return null;
 
-  if (
-    typeof boundariesElement !== "string" &&
-    !(boundariesElement instanceof HTMLElement)
-  ) {
-    return Error(
-      "Invalid prop boundariesElement: it has to be string or HTMLElement."
-    );
-  }
+    if (
+        typeof boundariesElement !== "string" &&
+        !(boundariesElement instanceof HTMLElement)
+    ) {
+        return Error(
+            "Invalid prop boundariesElement: it has to be string or HTMLElement."
+        );
+    }
 
-  return null;
+    return null;
 };
 
 const triggerPropsCheck = ({ trigger }: { trigger: triggerType }) => {
-  if (!trigger) return Error("Invalid prop trigger. Prop missing.");
+    if (!trigger) return Error("Invalid prop trigger. Prop missing.");
 
-  const triggers = Object.entries(trigger);
+    const triggers = Object.entries(trigger);
 
-  for (let i = 0; i < triggers.length; i += 1) {
-    const [triggerChar, settings] = triggers[i];
+    for (let i = 0; i < triggers.length; i += 1) {
+        const [triggerChar, settings] = triggers[i];
 
-    if (typeof triggerChar !== "string") {
-      return Error(
-        "Invalid prop trigger. Keys of the object has to be string."
-      );
+        if (typeof triggerChar !== "string") {
+            return Error(
+                "Invalid prop trigger. Keys of the object has to be string."
+            );
+        }
+
+        // $FlowFixMe
+        const triggerSetting: triggerType = settings;
+
+        const {
+            component,
+            dataProvider,
+            output,
+            afterWhitespace,
+            allowWhitespace,
+        } = triggerSetting;
+
+        if (!component || typeof component !== "function") {
+            return Error("Invalid prop trigger: component should be defined.");
+        }
+
+        if (!dataProvider || typeof dataProvider !== "function") {
+            return Error(
+                "Invalid prop trigger: dataProvider should be defined."
+            );
+        }
+
+        if (output && typeof output !== "function") {
+            return Error("Invalid prop trigger: output should be a function.");
+        }
+
+        if (afterWhitespace && allowWhitespace) {
+            return Error(
+                "Invalid prop trigger: afterWhitespace and allowWhitespace can be used together"
+            );
+        }
     }
 
-    // $FlowFixMe
-    const triggerSetting: triggerType = settings;
-
-    const {
-      component,
-      dataProvider,
-      output,
-      afterWhitespace,
-      allowWhitespace
-    } = triggerSetting;
-
-    if (!component || typeof component !== "function") {
-      return Error("Invalid prop trigger: component should be defined.");
-    }
-
-    if (!dataProvider || typeof dataProvider !== "function") {
-      return Error("Invalid prop trigger: dataProvider should be defined.");
-    }
-
-    if (output && typeof output !== "function") {
-      return Error("Invalid prop trigger: output should be a function.");
-    }
-
-    if (afterWhitespace && allowWhitespace) {
-      return Error(
-        "Invalid prop trigger: afterWhitespace and allowWhitespace can be used together"
-      );
-    }
-  }
-
-  return null;
+    return null;
 };
 
 ReactTextareaAutocomplete.propTypes = {
-  value: PropTypes.string,
-  loadingComponent: PropTypes.func.isRequired,
-  minChar: PropTypes.number,
-  onChange: PropTypes.func,
-  onSelect: PropTypes.func,
-  onBlur: PropTypes.func,
-  onClick: PropTypes.func,
-  textAreaComponent: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
-  movePopupAsYouType: PropTypes.bool,
-  onCaretPositionChange: PropTypes.func,
-  className: PropTypes.string,
-  containerStyle: PropTypes.object,
-  containerClassName: PropTypes.string,
-  style: PropTypes.object,
-  listStyle: PropTypes.object,
-  itemStyle: PropTypes.object,
-  loaderStyle: PropTypes.object,
-  dropdownStyle: PropTypes.object,
-  listClassName: PropTypes.string,
-  itemClassName: PropTypes.string,
-  loaderClassName: PropTypes.string,
-  dropdownClassName: PropTypes.string,
-  boundariesElement: containerPropCheck, //eslint-disable-line
-  trigger: triggerPropsCheck, //eslint-disable-line
-  renderToBody: PropTypes.bool
+    value: PropTypes.string,
+    loadingComponent: PropTypes.func.isRequired,
+    minChar: PropTypes.number,
+    onChange: PropTypes.func,
+    onSelect: PropTypes.func,
+    onBlur: PropTypes.func,
+    onClick: PropTypes.func,
+    textAreaComponent: PropTypes.oneOfType([
+        PropTypes.string,
+        PropTypes.object,
+    ]),
+    movePopupAsYouType: PropTypes.bool,
+    onCaretPositionChange: PropTypes.func,
+    className: PropTypes.string,
+    containerStyle: PropTypes.object,
+    containerClassName: PropTypes.string,
+    style: PropTypes.object,
+    listStyle: PropTypes.object,
+    itemStyle: PropTypes.object,
+    loaderStyle: PropTypes.object,
+    dropdownStyle: PropTypes.object,
+    listClassName: PropTypes.string,
+    itemClassName: PropTypes.string,
+    loaderClassName: PropTypes.string,
+    dropdownClassName: PropTypes.string,
+    boundariesElement: containerPropCheck, //eslint-disable-line
+    trigger: triggerPropsCheck, //eslint-disable-line
+    renderToBody: PropTypes.bool,
 };
 
 export default MyReactTextareaAutocomplete;

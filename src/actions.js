@@ -22,8 +22,8 @@ export function setName(target, name) {
     return {type: SET_NAME, target, name}
 }
 
-export function setValue(target, value) {
-    return {type: SET_VALUE, target, value}
+export function setValue(target, field, value) {
+    return {type: SET_VALUE, target, field, value}
 }
 
 export function grabItem(target, item) {
