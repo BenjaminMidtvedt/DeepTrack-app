@@ -4,3 +4,4 @@ deeptrack
 pyinstaller
 matplotlib
 scipy
+zerorpc
