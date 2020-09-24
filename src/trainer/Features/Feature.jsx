@@ -42,20 +42,14 @@ import {
 } from "../../actions";
 
 import AutoComplete from "../AutoComplete/index";
+import AutoCompleteItem from "./AutocompleteItem.tsx";
+import AutoCompleteInput from "./AutoCompleteInput.tsx";
 
 import Python from "../../PythonInterface";
 import store from "../../store";
 
 const fs = window.require("fs");
 const path = window.require("path");
-
-let available_functions = {};
-
-Python.getAvailableFunctions((err, res) => {
-    if (res) {
-        available_functions = res;
-    }
-});
 
 let SAVES_FOLDER = path.resolve("./saves/") + "\\";
 
@@ -81,125 +75,6 @@ const throttle = (f) => {
     result.cancel = () => token && cancelAnimationFrame(token);
     return result;
 };
-
-function getTriggersFromTree(tree, blacklist) {
-    // if (this.oldTree === tree) {
-    //     return this.oldTriggers
-    // }
-
-    // this.oldTree = {...tree}
-
-    const formatedTree = {};
-
-    tree = store.getState().undoable.present.items;
-    const getTriggersFromFeature = (featureIndex) => {
-        const feature = tree[featureIndex];
-        switch (feature.class) {
-            case "featureGroup":
-                feature.items.forEach((i) => getTriggersFromFeature(i));
-                break;
-            case "feature":
-                let branch = formatedTree;
-                if (!blacklist.includes(feature.index)) {
-                    const newFeature = { ...feature };
-                    newFeature.key = newFeature.name;
-                    formatedTree[feature.name] = {
-                        _suggestionData: newFeature,
-                    };
-                    branch = formatedTree[feature.name];
-                }
-
-                feature.items.forEach((i) => {
-                    const sub = tree[i];
-                    if (sub.class === "featureGroup")
-                        return getTriggersFromFeature(i);
-                    if (!blacklist.includes(sub.index)) {
-                        const newItem = { ...sub };
-                        newItem.key = newItem.name;
-                        branch[newItem.name] = { _suggestionData: newItem };
-                    }
-                });
-                break;
-            default:
-                break;
-        }
-    };
-
-    tree[0].items.forEach((i) => {
-        tree[i].items.forEach((j) => getTriggersFromFeature(j));
-    });
-
-    return formatedTree;
-}
-
-function AutoCompleteItem(props) {
-    let AcIcon = null;
-    switch (props.entity[1] ? props.entity[1].class : "") {
-        case "property":
-            AcIcon = Settings;
-            break;
-        case "feature":
-            AcIcon = Memory;
-            break;
-        case "module":
-            AcIcon = Share;
-            break;
-        case "function":
-            AcIcon = Code;
-            break;
-        default:
-            AcIcon = Code;
-            break;
-    }
-
-    return (
-        <div className={"aci"}>
-            <AcIcon style={{ height: "20px", top: "1px" }}></AcIcon>{" "}
-            <span>{props.entity[0]}</span>
-        </div>
-    );
-}
-
-function getInfoBox(item) {
-    if (item) {
-        switch (item[1].class) {
-            case "module":
-                break;
-            case "function":
-                return <div>{item[1].signature}</div>;
-            case "property":
-                return <div>{item[1].value}</div>;
-            default:
-                break;
-        }
-    }
-}
-
-function AutoCompleteInput(props) {
-    const [tree, setTree] = React.useState({});
-
-    return (
-        <AutoComplete
-            getInfoBox={getInfoBox}
-            className={"actb"}
-            onFocus={() => {
-                setTree({
-                    ...(available_functions || {}),
-                    ...getTriggersFromTree(props.tree, [props.parent]),
-                });
-            }}
-            style={{ width: "90%", fontFamily: "Hack", fontSize: "12px" }}
-            onChange={props.onChange}
-            placeholder={props.placeholder}
-            value={props.value}
-            dropdownStyle={{ zIndex: 999 }}
-            separators={props.separators}
-            component={(props) => (
-                <AutoCompleteItem {...props} onSelect={(item) => {}} />
-            )}
-            tree={tree}></AutoComplete>
-    );
-}
 
 function NameInput(props) {
     const re = /[^a-zA-Z0-9_]/gi;

@@ -867,7 +867,7 @@ const useStyles = (theme) => {
     };
 };
 
-const BootstrapInput = withStyles((theme: Theme) =>
+const BootstrapInput = withStyles((theme) =>
     createStyles({
         root: {
             "label + &": {

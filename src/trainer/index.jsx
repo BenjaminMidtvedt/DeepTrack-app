@@ -348,15 +348,19 @@ export default class Trainer extends React.Component {
                 }
                 function requestNext(index, self) {
                     if (index < num) {
-                        Python.sampleFeature(items, (err, res) => {
-                            if (res) {
-                                save(index, res.S[0], res.S[1]);
+                        Python.sampleFeature(
+                            items,
+                            { S: true, V: false, T: false },
+                            (err, res) => {
+                                if (res) {
+                                    save(index, res.S[0], res.S[1]);
+                                }
+
+                                self.updateState(err, res);
+
+                                requestNext(index + 1, self);
                             }
-
-                            self.updateState(err, res);
-
-                            requestNext(index + 1, self);
-                        });
+                        );
                     } else {
                         fs.writeFileSync(
                             dir + "config.json",

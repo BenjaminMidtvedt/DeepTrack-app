@@ -118,7 +118,7 @@ const AntTab = withStyles((theme) =>
 
 const drawerWidth = 280;
 
-const useStyles = makeStyles((theme: Theme) =>
+const useStyles = makeStyles((theme) =>
     createStyles({
         root: {
             display: "flex",
@@ -194,7 +194,7 @@ export default function App() {
         setOpen(false);
     };
 
-    function a11yProps(index: any) {
+    function a11yProps(index) {
         return {
             onClick: () => setValue(index),
         };
