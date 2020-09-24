@@ -266,7 +266,10 @@ class Property extends React.Component {
                                                     "darken property-row"
                                                 }>
                                                 <AutoCompleteInput
-                                                    parent={item}
+                                                    blacklist={[
+                                                        this.props.parent,
+                                                        item.index,
+                                                    ]}
                                                     name={item.name}
                                                     style={{ width: "80%" }}
                                                     placeholder={placeholder}

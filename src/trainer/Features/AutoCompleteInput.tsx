@@ -3,6 +3,7 @@ import AutoComplete from "../AutoComplete";
 import AutoCompleteItem from "./AutocompleteItem";
 import { getTriggersFromTree, available_functions } from "./utils";
 import { entity } from "./types";
+import { StoreItem } from "../../StoreTypes";
 
 function getInfoBox(item: entity | null): ReactNode | null {
     if (item) {
@@ -20,15 +21,16 @@ function getInfoBox(item: entity | null): ReactNode | null {
 }
 
 interface AutoCompleteInputPropTypes {
-    tree: object;
-    parent: number;
+    tree: StoreItem[];
+    blacklist: number[];
+    name: string;
     onChange: Function;
     placeholder?: String;
     value: String;
     separators: String[];
 }
 
-export default function AutoCompleteInput(props) {
+export default function AutoCompleteInput(props: AutoCompleteInputPropTypes) {
     const [tree, setTree] = React.useState({});
 
     return (
@@ -38,7 +40,7 @@ export default function AutoCompleteInput(props) {
             onFocus={() => {
                 setTree({
                     ...(available_functions || {}),
-                    ...getTriggersFromTree(props.tree, [props.parent]),
+                    ...getTriggersFromTree(props.tree, props.blacklist),
                 });
             }}
             style={{ width: "90%", fontFamily: "Hack", fontSize: "12px" }}
@@ -48,7 +50,7 @@ export default function AutoCompleteInput(props) {
             dropdownStyle={{ zIndex: 999 }}
             separators={props.separators}
             component={(props) => (
-                <AutoCompleteItem {...props} onSelect={(item) => {}} />
+                <AutoCompleteItem {...props} onSelect={(item: entity) => {}} />
             )}
             tree={tree}></AutoComplete>
     );

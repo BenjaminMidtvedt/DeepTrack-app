@@ -27,11 +27,11 @@ export function getTriggersFromTree(
                 feature.items.forEach((i) => getTriggersFromFeature(i));
                 break;
             case "feature":
-                let branch = formatedTree;
+                let branch: Triggers | Trigger = formatedTree;
                 if (!blacklist.includes(feature.index)) {
                     const newFeature = { ...feature } as StoreItem;
                     newFeature.key = newFeature.name;
-                    let branch: Trigger = {
+                    branch = {
                         _suggestionData: newFeature,
                     };
                     formatedTree[feature.name] = {
