@@ -1,6 +1,9 @@
+gunicorn==19.9.0
+gevent==1.3.4
+greenlet==0.4.13
+deeptrack>=4.1
 numpy
 opencv-python==4.1.2.30
-deeptrack
 pyinstaller
 matplotlib
 scipy

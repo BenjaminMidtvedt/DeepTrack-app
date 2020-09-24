@@ -1,116 +1,122 @@
 {
-  "name": "deeptrack",
-  "version": "0.3.3",
-  "author": "softmatterlab",
-  "private": true,
-  "dependencies": {
-    "@material-ui/lab": "^4.0.0-alpha.49",
-    "custom-electron-titlebar": "^3.2.4",
-    "custom-event": "^1.0.1",
-    "d3": "^5.16.0",
-    "electron-log": "^4.2.2",
-    "electron-updater": "^4.3.4",
-    "react-window": "^1.8.5",
-    "textarea-caret": "^3.1.0",
-    "zeromq": "^6.0.0-beta.6",
-    "zerorpc": "hokiedsp/zerorpc-node#master"
-  },
-  "bundledDependencies": [
-    "zeromq",
-    "zerorpc"
-  ],
-  "main": "public/electron.js",
-  "scripts": {
+    "name": "deeptrack",
+    "version": "0.3.3",
+    "author": "softmatterlab",
+    "private": true,
+    "dependencies": {
+        "@material-ui/lab": "^4.0.0-alpha.49",
+        "custom-electron-titlebar": "^3.2.4",
+        "custom-event": "^1.0.1",
+        "d3": "^5.16.0",
+        "electron-log": "^4.2.2",
+        "electron-updater": "^4.3.4",
+        "react-window": "^1.8.5",
+        "textarea-caret": "^3.1.0",
+        "zeromq": "^6.0.0-beta.6",
+        "zerorpc": "hokiedsp/zerorpc-node#master"
+    },
+    "bundledDependencies": [
+        "zeromq",
+        "zerorpc"
+    ],
+    "main": "public/electron.js",
+    "scripts": {
+        "postinstall": "electron-builder install-app-deps",
+        "start": "react-scripts start",
+        "start-dev": "nf start",
+        "start-prod": "npm run electron",
+        "pack": "electron-builder --dir",
+        "dist": "electron-builder",
+        "publish": "electron-builder build --win --publish always",
+        "create": "electron-builder build --win --publish never",
+        "dist-all": "electron-builder -mw",
+        "build": "react-scripts build",
+        "rebuild": "electron-rebuild",
+        "package": "npm run build && electron-packager . --overwrite",
+        "test": "react-scripts test",
+        "eject": "react-scripts eject",
+        "electron": "electron . --allow-file-access-from-files",
+        "test-server": "python ./python_src/server.py",
+        "dev": "nf start -p 3000",
+        "build-server": "cd python_src && pyinstaller server.spec --noconfirm",
+        "full-compile": "npm run build && npm run build-server && npm run dist"
+    },
+    "eslintConfig": {
+        "extends": "react-app"
+    },
+    "browserslist": {
+        "production": [
+            ">0.2%",
+            "not dead",
+            "not op_mini all"
+        ],
+        "development": [
+            "last 1 chrome version",
+            "last 1 firefox version",
+            "last 1 safari version"
+        ]
+    },
     "postinstall": "electron-builder install-app-deps",
-    "start": "react-scripts start",
-    "start-dev": "nf start",
-    "start-prod": "npm run electron",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder",
-    "publish": "electron-builder build --win --publish always",
-    "create": "electron-builder build --win --publish never",
-    "dist-all": "electron-builder -mw",
-    "build": "react-scripts build",
-    "rebuild": "electron-rebuild",
-    "package": "npm run build && electron-packager . --overwrite",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "electron": "electron . --allow-file-access-from-files",
-    "test-server": "py ./python_src/server.py",
-    "dev": "nf start -p 3000",
-    "build-server": "cd python_src && pyinstaller server.spec --noconfirm",
-    "full-compile": "npm run build && npm run build-server && npm run dist"
-  },
-  "eslintConfig": {
-    "extends": "react-app"
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  },
-  "postinstall": "electron-builder install-app-deps",
-  "build": {
-    "ProductName": "DeepTrack 2.0",
-    "appId": "com.softmatterlab.deeptrack",
-    "artifactName": "DeepTrack.{ext}",
-    "win": {
-      "publisherName": [
-        "DeepTrackCertificate"
-      ],
-      "verifyUpdateCodeSignature": false,
-      "target": "nsis",
-      "publish": [
-        {
-          "provider": "github",
-          "owner": "BenjaminMidtvedt",
-          "repo": "deeptrack-app"
-        }
-      ]
+    "build": {
+        "ProductName": "DeepTrack 2.0",
+        "appId": "com.softmatterlab.deeptrack",
+        "artifactName": "DeepTrack.{ext}",
+        "win": {
+            "publisherName": [
+                "DeepTrackCertificate"
+            ],
+            "verifyUpdateCodeSignature": false,
+            "target": "nsis",
+            "publish": [
+                {
+                    "provider": "github",
+                    "owner": "BenjaminMidtvedt",
+                    "repo": "deeptrack-app"
+                }
+            ]
+        },
+        "mac": {
+            "target": "dmg"
+        },
+        "files": [
+            "./build/**/*",
+            "./python_src/dist/**/*",
+            "./custom_features/**/*",
+            "./tmp/",
+            "package.json"
+        ],
+        "asar": false
     },
-    "mac": {
-      "target": "dmg"
+    "devDependencies": {
+        "@material-ui/core": "^4.9.10",
+        "@material-ui/icons": "^4.9.1",
+        "@material-ui/styles": "^4.9.0",
+        "@testing-library/jest-dom": "^4.2.4",
+        "@testing-library/react": "^9.4.0",
+        "@testing-library/user-event": "^7.2.1",
+        "@types/jest": "^26.0.14",
+        "@types/node": "^14.11.2",
+        "@types/react": "^16.9.49",
+        "@types/react-dom": "^16.9.8",
+        "easy-redux-undo": "^1.0.0",
+        "electron": "^8.0.0",
+        "electron-builder": "^22.8.0",
+        "electron-forge": "^5.2.4",
+        "electron-packager": "^14.2.1",
+        "electron-rebuild": "^1.10.0",
+        "foreman": "^3.0.1",
+        "node-sass": "^4.13.1",
+        "notistack": "^0.9.9",
+        "npm-run-all": "^4.1.5",
+        "react": "^16.12.0",
+        "react-dnd": "^10.0.2",
+        "react-dom": "^16.12.0",
+        "react-redux": "^7.2.0",
+        "react-scripts": "3.3.1",
+        "redux-undo": "^1.0.1",
+        "redux-undoable": "^1.0.2",
+        "reselect": "^4.0.0",
+        "typescript": "^4.0.3"
     },
-    "files": [
-      "./build/**/*",
-      "./python_src/dist/**/*",
-      "./custom_features/**/*",
-      "./tmp/",
-      "package.json"
-    ],
-    "asar": false
-  },
-  "devDependencies": {
-    "@material-ui/core": "^4.9.10",
-    "@material-ui/icons": "^4.9.1",
-    "@material-ui/styles": "^4.9.0",
-    "@testing-library/jest-dom": "^4.2.4",
-    "@testing-library/react": "^9.4.0",
-    "@testing-library/user-event": "^7.2.1",
-    "easy-redux-undo": "^1.0.0",
-    "electron": "^8.0.0",
-    "electron-builder": "^22.8.0",
-    "electron-forge": "^5.2.4",
-    "electron-packager": "^14.2.1",
-    "electron-rebuild": "^1.10.0",
-    "foreman": "^3.0.1",
-    "node-sass": "^4.13.1",
-    "notistack": "^0.9.9",
-    "react": "^16.12.0",
-    "react-dnd": "^10.0.2",
-    "react-dom": "^16.12.0",
-    "react-redux": "^7.2.0",
-    "react-scripts": "3.3.1",
-    "redux-undo": "^1.0.1",
-    "redux-undoable": "^1.0.2",
-    "reselect": "^4.0.0"
-  },
-  "homepage": "./"
+    "homepage": "./"
 }

@@ -80,7 +80,7 @@ const iconstyle = {
     fontSize: "inherit",
 };
 
-const AntTabs = withStyles((theme: Theme) =>
+const AntTabs = withStyles((theme) =>
     createStyles({
         root: {
             // borderBottom: '1px solid #00000022',
@@ -91,7 +91,7 @@ const AntTabs = withStyles((theme: Theme) =>
     })
 )(Tabs);
 
-const AntTab = withStyles((theme: Theme) =>
+const AntTab = withStyles((theme) =>
     createStyles({
         root: {
             textTransform: "none",
