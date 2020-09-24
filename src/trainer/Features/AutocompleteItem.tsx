@@ -28,8 +28,6 @@ export default function AutoCompleteItem(props: AutoCompleteItemPropTypes) {
             break;
     }
 
-    console.log(props.entity);
-
     return (
         <div className={"aci"}>
             <AcIcon style={{ height: "20px", top: "1px" }}></AcIcon>{" "}

@@ -112,7 +112,6 @@ function History(props) {
         errorMessage = "..." + error.stack.slice(-200) + "\n\n" + error.message;
     }
     let element;
-    console.log(result);
     if (result) {
         element = (R, L, i, ylabel) => (
             <>
@@ -147,16 +146,7 @@ function History(props) {
         V: "Validation",
         T: "Test",
     };
-    console.log(
-        "30px repeat(" +
-            Object.keys(result || { a: 1 }).length +
-            ", " +
-            100 / Object.keys(result || { a: 1 }).length +
-            "% - " +
-            (30 + (Object.keys(result || { a: 1 }).length - 1) * 10) /
-                Object.keys(result || { a: 1 }).length +
-            "px)"
-    );
+
     return (
         <div
             className={"background--20"}
