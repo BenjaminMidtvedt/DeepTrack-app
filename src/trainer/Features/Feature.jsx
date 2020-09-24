@@ -270,6 +270,7 @@ class Property extends React.Component {
                                                         this.props.parent,
                                                         item.index,
                                                     ]}
+                                                    field={field}
                                                     name={item.name}
                                                     style={{ width: "80%" }}
                                                     placeholder={placeholder}

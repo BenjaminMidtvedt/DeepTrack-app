@@ -3,6 +3,6 @@ export type entity = [
     {
         class: "module" | "function" | "property" | "feature";
         signature: String;
-        value: String;
+        S?: String;
     }
 ];

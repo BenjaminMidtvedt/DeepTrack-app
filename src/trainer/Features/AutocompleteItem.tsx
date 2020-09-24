@@ -2,14 +2,10 @@ import { OverridableComponent } from "@material-ui/core/OverridableComponent";
 import { SvgIconTypeMap } from "@material-ui/core";
 import { Code, Memory, Settings, Share } from "@material-ui/icons";
 import React from "react";
+import { entity } from "./types";
 
 interface AutoCompleteItemPropTypes {
-    entity: [
-        string,
-        {
-            class: string;
-        }
-    ];
+    entity: entity;
 }
 
 export default function AutoCompleteItem(props: AutoCompleteItemPropTypes) {
@@ -31,6 +27,8 @@ export default function AutoCompleteItem(props: AutoCompleteItemPropTypes) {
             AcIcon = Code;
             break;
     }
+
+    console.log(props.entity);
 
     return (
         <div className={"aci"}>

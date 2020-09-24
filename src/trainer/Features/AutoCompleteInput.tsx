@@ -5,7 +5,7 @@ import { getTriggersFromTree, available_functions } from "./utils";
 import { entity } from "./types";
 import { StoreItem } from "../../StoreTypes";
 
-function getInfoBox(item: entity | null): ReactNode | null {
+function getInfoBox(item: entity | null, field: string): ReactNode | null {
     if (item) {
         switch (item[1].class) {
             case "module":
@@ -13,7 +13,11 @@ function getInfoBox(item: entity | null): ReactNode | null {
             case "function":
                 return <div>{item[1].signature}</div>;
             case "property":
-                return <div>{item[1].value}</div>;
+                const value =
+                    item[1][field] ||
+                    (field === "T" && item[1]["V"]) ||
+                    item[1]["S"];
+                return <div>{value}</div>;
             default:
                 break;
         }
@@ -25,6 +29,7 @@ interface AutoCompleteInputPropTypes {
     blacklist: number[];
     name: string;
     onChange: Function;
+    field: "S" | "V" | "T" | "L";
     placeholder?: String;
     value: String;
     separators: String[];
@@ -35,7 +40,7 @@ export default function AutoCompleteInput(props: AutoCompleteInputPropTypes) {
 
     return (
         <AutoComplete
-            getInfoBox={getInfoBox}
+            getInfoBox={(item) => getInfoBox(item, props.field)}
             className={"actb"}
             onFocus={() => {
                 setTree({
