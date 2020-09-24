@@ -57,12 +57,16 @@
   },
   "postinstall": "electron-builder install-app-deps",
   "build": {
+    "ProductName": "DeepTrack 2.0",
     "appId": "com.softmatterlab.deeptrack",
+    "artifactName": "DeepTrack.{ext}",
     "win": {
-      "publisherName":["DeepTrackCertificate"],
+      "publisherName": [
+        "DeepTrackCertificate"
+      ],
       "verifyUpdateCodeSignature": false,
       "target": "nsis",
-      "publish": [  
+      "publish": [
         {
           "provider": "github",
           "owner": "BenjaminMidtvedt",
