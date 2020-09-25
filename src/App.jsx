@@ -147,10 +147,12 @@ const useStyles = makeStyles((theme) =>
             display: "none",
         },
         drawer: {
+            marginTop: 30,
             width: drawerWidth,
             flexShrink: 0,
         },
         drawerPaper: {
+            marginTop: 30,
             width: drawerWidth,
         },
         drawerHeader: {

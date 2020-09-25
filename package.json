@@ -1,6 +1,6 @@
 {
     "name": "deeptrack",
-    "version": "0.3.3",
+    "version": "0.4.0",
     "author": "softmatterlab",
     "private": true,
     "dependencies": {
@@ -58,7 +58,7 @@
     },
     "postinstall": "electron-builder install-app-deps",
     "build": {
-        "ProductName": "DeepTrack 2.0",
+        "productName": "DeepTrack 2.0",
         "appId": "com.softmatterlab.deeptrack",
         "artifactName": "DeepTrack.{ext}",
         "win": {

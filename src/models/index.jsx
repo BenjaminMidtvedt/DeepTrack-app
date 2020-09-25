@@ -16,8 +16,6 @@ import {
     Slider,
     IconButton,
     Select,
-    MenuItem,
-    Grid,
     Switch,
     FormControlLabel,
     Tabs,
