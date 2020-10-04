@@ -1,11 +1,11 @@
 // @flow
 
-import React from "react";
+import React from 'react';
 
-import Listeners, { KEY_CODES } from "./listener";
-import Item from "./Item";
-import type { ListProps, ListState } from "./types";
-import { FixedSizeList as VirtualizedList } from "react-window";
+import Listeners, { KEY_CODES } from './listener';
+import Item from './Item';
+import type { ListProps, ListState } from './types';
+import { FixedSizeList as VirtualizedList } from 'react-window';
 
 export default class List extends React.Component<ListProps, ListState> {
     state: ListState = {
@@ -18,7 +18,7 @@ export default class List extends React.Component<ListProps, ListState> {
     componentDidMount() {
         this.listeners.push(
             Listeners.add([KEY_CODES.DOWN, KEY_CODES.UP], this.scroll),
-            Listeners.add([KEY_CODES.ENTER, KEY_CODES.TAB], this.onPressEnter)
+            Listeners.add([KEY_CODES.ENTER, KEY_CODES.TAB], this.onPressEnter),
         );
 
         const { values } = this.props;
@@ -28,18 +28,10 @@ export default class List extends React.Component<ListProps, ListState> {
     componentDidUpdate({ values: oldValues }: ListProps) {
         const { values } = this.props;
 
-        const oldValuesSerialized = oldValues
-            .map((val) => this.getId(val))
-            .join("");
-        const newValuesSerialized = values
-            .map((val) => this.getId(val))
-            .join("");
+        const oldValuesSerialized = oldValues.map((val) => this.getId(val)).join('');
+        const newValuesSerialized = values.map((val) => this.getId(val)).join('');
 
-        if (
-            oldValuesSerialized !== newValuesSerialized &&
-            values &&
-            values[0]
-        ) {
+        if (oldValuesSerialized !== newValuesSerialized && values && values[0]) {
             this.selectItem(values[0]);
         }
     }
@@ -53,7 +45,7 @@ export default class List extends React.Component<ListProps, ListState> {
     }
 
     onPressEnter = (e: SyntheticEvent<*>) => {
-        if (typeof e !== "undefined") {
+        if (typeof e !== 'undefined') {
             e.preventDefault();
         }
 
@@ -67,9 +59,7 @@ export default class List extends React.Component<ListProps, ListState> {
 
         if (!selectedItem) return 0;
 
-        return values.findIndex(
-            (a) => this.getId(a) === this.getId(selectedItem)
-        );
+        return values.findIndex((a) => this.getId(a) === this.getId(selectedItem));
     };
 
     getId = (item: Object | string): string => {
@@ -121,20 +111,14 @@ export default class List extends React.Component<ListProps, ListState> {
                 break;
         }
 
-        newPosition =
-            ((newPosition % values.length) + values.length) % values.length; // eslint-disable-line
-        this.selectItem(
-            values[newPosition],
-            [KEY_CODES.DOWN, KEY_CODES.UP].includes(code)
-        );
+        newPosition = ((newPosition % values.length) + values.length) % values.length; // eslint-disable-line
+        this.selectItem(values[newPosition], [KEY_CODES.DOWN, KEY_CODES.UP].includes(code));
     };
 
     getInfoBox() {
         if (!this.props.getInfoBox) return null;
 
-        return this.props.getInfoBox(
-            this.props.values[this.getPositionInList()]
-        );
+        return this.props.getInfoBox(this.props.values[this.getPositionInList()]);
     }
 
     isSelected = (item: Object | string): boolean => {
@@ -144,14 +128,7 @@ export default class List extends React.Component<ListProps, ListState> {
     };
 
     render() {
-        const {
-            values,
-            component,
-            style,
-            itemClassName,
-            className,
-            itemStyle,
-        } = this.props;
+        const { values, component, style, itemClassName, className, itemStyle } = this.props;
 
         const infoBox = this.getInfoBox();
         const self = this;
@@ -176,14 +153,15 @@ export default class List extends React.Component<ListProps, ListState> {
         }
 
         return (
-            <div style={{ display: "flex", flexDirection: "row" }}>
+            <div style={{ display: 'flex', flexDirection: 'row' }}>
                 <VirtualizedList
-                    className={`rta__list ${className || ""}`}
+                    className={`rta__list ${className || ''}`}
                     ref={(ref) => (this.list = ref)}
                     height={200}
                     itemCount={values ? values.length : 0}
                     itemSize={22}
-                    width={450}>
+                    width={450}
+                >
                     {Row}
                 </VirtualizedList>
                 {infoBox && <div className="rta__infobox">{infoBox}</div>}

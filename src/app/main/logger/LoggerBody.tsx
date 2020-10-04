@@ -1,5 +1,5 @@
-import React from "react";
-import { connect } from "react-redux";
+import React from 'react';
+import { connect } from 'react-redux';
 
 interface LoggerBodyPropTypes {
     text: string;
@@ -13,24 +13,20 @@ class LoggerBody extends React.Component<LoggerBodyPropTypes> {
     }
 
     componentWillUpdate() {
-        const logger = document.getElementById("logger__inner");
+        const logger = document.getElementById('logger__inner');
         if (logger) {
-            this.isScrolledToBottom =
-                logger.scrollHeight - logger.clientHeight <=
-                logger.scrollTop + 5;
+            this.isScrolledToBottom = logger.scrollHeight - logger.clientHeight <= logger.scrollTop + 5;
         }
     }
 
     componentDidUpdate() {
-        const logger = document.getElementById("logger__inner");
-        if (this.isScrolledToBottom && logger)
-            logger.scrollTop = logger.scrollHeight - logger.clientHeight;
+        const logger = document.getElementById('logger__inner');
+        if (this.isScrolledToBottom && logger) logger.scrollTop = logger.scrollHeight - logger.clientHeight;
     }
 
     scrollToBottom() {
-        const logger = document.getElementById("logger__inner");
-        if (this.isScrolledToBottom && logger)
-            logger.scrollTop = logger.scrollHeight - logger.clientHeight;
+        const logger = document.getElementById('logger__inner');
+        if (this.isScrolledToBottom && logger) logger.scrollTop = logger.scrollHeight - logger.clientHeight;
     }
 
     render() {
