@@ -22,6 +22,8 @@ import io
 import re
 import glob
 import dts_to_py
+import google_api
+import zerorpc
 from deeptrack import *
 
 try:
@@ -139,6 +141,21 @@ PACKAGE_DICT = dict(
 )
 
 
+class Bind(deeptrack.Feature):
+    __distributed__ = False
+
+    def __init__(self, feature, **kwargs):
+        self.feature = feature
+        super().__init__(**kwargs)
+
+    def _update(self, **kwargs):
+        super()._update(**kwargs)
+        self.feature._update(**self.properties, **kwargs)
+
+    def get(self, image, **kwargs):
+        return self.feature.resolve(image, **kwargs)
+
+
 class PyAPI(object):
     def __init__(self, *args, **kwargs):
         self.queuedModels = []
@@ -150,6 +167,13 @@ class PyAPI(object):
         self.training_thread.start()
         self.lock = threading.Lock
         self.generator = None
+
+    @zerorpc.stream
+    def download(self, id, destination):
+        iterator = google_api.load(id, destination)
+
+        print(iterator)
+        return iterator
 
     @cached_function
     def getAvailableFunctions(self, *args, **kwargs):
@@ -326,41 +350,59 @@ class PyAPI(object):
                     max_data_size=int(next_model["max_data_size"]),
                 )
 
+                validation_generator = generators.ContinuousGenerator(
+                    [
+                        Bind(feature, is_validation=True),
+                        Bind(label_feature, is_validation=True),
+                    ],
+                    label_function=lambda image: image[1],
+                    batch_function=lambda image: image[0],
+                    feature_kwargs=[{}, {"is_label": True}],
+                    batch_size=int(next_model["batch_size"]),
+                    min_data_size=int(next_model["validation_set_size"]) - 1,
+                    max_data_size=int(next_model["validation_set_size"]),
+                )
+
+                test_generator = generators.ContinuousGenerator(
+                    [Bind(feature, is_test=True), Bind(label_feature, is_test=True)],
+                    label_function=lambda image: image[1],
+                    batch_function=lambda image: image[0],
+                    feature_kwargs=[{}, {"is_label": True}],
+                    batch_size=int(next_model["batch_size"]),
+                    min_data_size=int(next_model["test_set_size"]) - 1,
+                    max_data_size=int(next_model["test_set_size"]),
+                )
+
                 next_model["status"] = "Generating validation set"
-                validation_set = []
-                for _ in range(int(next_model["validation_set_size"])):
-                    label_feature.update(is_validation=True)
-                    validation_set.append(
-                        (
-                            feature.resolve(),
-                            label_feature.resolve(is_label=True),
-                        )
+                with validation_generator:
+                    validation_generator.on_epoch_end()
+                    validation_data, validation_labels = zip(
+                        *validation_generator.current_data
                     )
-                    next_model["validation_size"] = len(validation_set)
-                validation_data, validation_labels = zip(*validation_set)
+                    next_model["validation_size"] = len(
+                        validation_generator.current_data
+                    )
 
                 next_model["status"] = "Generating test set"
-                test_set = []
-                for _ in range(int(next_model["test_set_size"])):
-                    label_feature.update(is_test=True)
-                    test_set.append(
-                        (
-                            feature.resolve(),
-                            label_feature.resolve(is_label=True),
-                        )
-                    )
-                    next_model["test_size"] = len(test_set)
+                with test_generator:
+                    test_generator.on_epoch_end()
+                    test_set = test_generator.current_data
+                    test_data, test_labels = zip(*test_set)
+                    next_model["test_size"] = len(test_generator.current_data)
 
+                print("Extracting properties")
+                next_model["status"] = "Extracting properties"
                 list_of_inputs = []
                 list_of_labels = []
 
-                next_model["status"] = "Pre-filling generator"
                 for data, label in zip(validation_data, validation_labels):
                     if label.ndim < 3:
                         label_out = []
                         prediction_out = []
+                        if label.ndim == 0:
+                            label = [label]
                         for idx, lab in enumerate(label):
-                            label_out.append({"name": "", "value": repr(lab)})
+                            label_out.append({"name": str(idx), "value": repr(lab)})
                     else:
                         label_out = self.save_image(label, "")
                     list_of_labels.append(label_out)
@@ -377,12 +419,13 @@ class PyAPI(object):
                 ]
                 min_val = np.inf
 
-                for _ in range(int(next_model["min_data_size"])):
-                    label_feature.update()
-                    generator.data.append(
-                        (feature.resolve(), label_feature.resolve(is_label=True))
-                    )
-                    next_model["data_size"] = len(generator.data)
+                next_model["status"] = "Pre-filling generator"
+                # for _ in range(int(next_model["min_data_size"])):
+                #     label_feature.update()
+                #     generator.data.append(
+                #         (feature.resolve(), label_feature.resolve(is_label=True))
+                #     )
+                #     next_model["data_size"] = len(generator.data)
 
                 with generator:
                     while (
@@ -460,7 +503,9 @@ class PyAPI(object):
                                     )
                                 ]
                             )
-                            for image, label in zip(validation_data, validation_labels)
+                            for image, label, _ in zip(
+                                validation_data, validation_labels, range(32)
+                            )
                         ]
 
                         next_model["validations"].append(evaluations)
@@ -468,9 +513,11 @@ class PyAPI(object):
                         for prediction in predictions:
                             if prediction.ndim < 3:
                                 prediction_out = []
+                                if prediction.ndim == 0:
+                                    prediction = [prediction]
                                 for idx, label in enumerate(prediction):
                                     prediction_out.append(
-                                        {"name": "N/A", "value": repr(label)}
+                                        {"name": str(idx), "value": repr(label)}
                                     )
                             else:
                                 prediction_out = self.save_image(prediction, "")
@@ -662,12 +709,14 @@ class PyAPI(object):
                         if arglist[idx] in argspec.annotations:
                             annotation = repr(argspec.annotations[arglist[idx]])
 
-                        default = False
+                        default = None
 
                         try:
                             pos = idx - (len(arglist) - len(defaultlist))
                             if pos >= 0:
                                 default = defaultlist[pos]
+                                if callable(default):
+                                    default = None
                         except:
                             pass
 
@@ -689,7 +738,7 @@ class PyAPI(object):
                         if arglist[idx] not in arg_dict:
                             arg_dict[arglist[idx]] = {"default": "", "annotation": ""}
 
-                        if default:
+                        if default is not None:
                             arg_dict[arglist[idx]]["default"] = repr(default)
                         if annotation:
                             arg_dict[arglist[idx]]["annotation"] = annotation
@@ -740,10 +789,16 @@ class PyAPI(object):
                 prop_value = prop
                 prop_dict = {}
 
-                prop_dict["S"] = prop_value.get("S", "").strip()
-                prop_dict["V"] = prop_value.get("V", "").strip() if SVTL["V"] else ""
+                prop_dict["S"] = prop_value.get("S", "").strip().replace('"', "'")
+                prop_dict["V"] = (
+                    prop_value.get("V", "").strip().replace('"', "'")
+                    if SVTL["V"]
+                    else ""
+                )
                 prop_dict["T"] = (
-                    (prop_value.get("T", "") or prop_value.get("T", "")).strip()
+                    (prop_value.get("T", "") or prop_value.get("V", ""))
+                    .strip()
+                    .replace('"', "'")
                     if SVTL["T"]
                     else ""
                 )
@@ -1019,10 +1074,10 @@ class PyAPI(object):
 
                 kwargs = {}
                 kwargs[condition] = True
-                feature.update(**kwargs)
-                label_feature.update(**kwargs)
+                feature.update(get_one_random=True, **kwargs)
+                label_feature.update(get_one_random=True, **kwargs)
                 t1 = time.time()
-                sample_image = np.squeeze(feature.resolve())
+                sample_image = deeptrack.image.Image(feature.resolve())
                 t2 = time.time()
                 print("Resolved image in {:06.4f} seconds".format(t2 - t1))
 
@@ -1036,8 +1091,33 @@ class PyAPI(object):
         for r_key, r_list in result_dict.items():
             sample_image = r_list[0]
             labels = r_list[1]
-            sample_image_file = self.save_image(sample_image, "./tmp/feature.bmp")
-            if "Label" in labels.get_property("name", False, []):
+
+            if sample_image.ndim >= 4:
+                idx = np.random.randint(len(sample_image))
+                sample_image = sample_image[idx]
+                labels = labels[idx]
+
+            print(labels.ndim)
+            if sample_image.size > 2e7:
+                raise EnvironmentError(
+                    "Result too large! Image is {0}. If you are loading batches of data from storage, try setting the `ndim` property of LoadImage to 4.".format(
+                        sample_image.shape
+                    )
+                )
+
+            if labels.size > 2e7:
+                raise EnvironmentError(
+                    "Result too large! Label is {0}. If you are loading batches of data from storage, try setting the `ndim` property of LoadImage to 4.".format(
+                        labels.shape
+                    )
+                )
+
+            sample_image_file = self.save_image(
+                np.squeeze(sample_image), "./tmp/feature.bmp"
+            )
+            if isinstance(
+                labels, deeptrack.image.Image
+            ) and "Label" in labels.get_property("name", False, []):
                 for prop in labels.properties:
                     if "name" in prop and prop["name"] == "Label":
                         propdict = prop
@@ -1054,7 +1134,11 @@ class PyAPI(object):
                         for key, value in zip(propdict.keys(), labels)
                     ]
                 else:
-                    labels = [{"name": "N/A", "value": repr(value)} for value in labels]
+                    labels = [{"name": "N/A", "value": str(value)} for value in labels]
+            elif labels.ndim == 1:
+                labels = [{"name": "N/A", "value": str(value)} for value in labels]
+            elif labels.ndim == 0:
+                labels = [{"name": "N/A", "value": str(labels)}]
             elif not isinstance(labels, dict):
                 labels = self.save_image(labels, "./tmp/feature.bmp")
             result_dict[r_key] = [sample_image_file, labels]
@@ -1130,11 +1214,11 @@ class PyAPI(object):
         import base64
 
         out = []
-        if images.ndim == 2:
+        while images.ndim < 3:
             images = np.expand_dims(images, axis=-1)
 
         for f in range(images.shape[-1]):
-            image = np.squeeze(images[..., f])
+            image = images[..., f]
 
             image -= np.min(image)
             immax = np.max(image)

@@ -1,0 +1,19 @@
+.sidebar {
+    min-width: 500px;
+    width: 500px;
+    height: 100%;
+    flex-direction: vertical;
+    text-align: center;
+    overflow-y: hidden;
+    overflow-x: hidden;
+    scrollbar-track-color: transparent;
+
+    .form {
+        height: 100%;
+    }
+
+    .header {
+        text-align: center;
+        border-bottom: 2px solid #bbb;
+    }
+}
